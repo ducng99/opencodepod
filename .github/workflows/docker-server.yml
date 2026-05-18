@@ -1,18 +1,17 @@
-name: Build and Push Docker Image
+name: Build and Push Server Docker Image
 
 on:
   push:
     branches:
       - main
     paths:
-      - docker/**
       - Dockerfile
       - cmd/**
       - internal/**
       - frontend/**
       - go.mod
       - go.sum
-      - .github/workflows/docker.yml
+      - .github/workflows/docker-server.yml
   workflow_dispatch:
 
 permissions:
@@ -20,27 +19,6 @@ permissions:
   packages: write
 
 jobs:
-  build-client:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push client image
-        uses: docker/build-push-action@v7
-        with:
-          context: ./docker
-          file: ./docker/Dockerfile
-          push: true
-          tags: ghcr.io/ducng99/opencodepod-client:latest
-
   build-server:
     runs-on: ubuntu-latest
     steps:
