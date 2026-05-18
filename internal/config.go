@@ -19,7 +19,7 @@ func LoadConfig() *Config {
 		ListenAddr:   getEnv("APP_LISTEN", ":8080"),
 		TailnetHost:  getEnv("APP_TAILNET_HOST", ""),
 		DockerHost:   getEnv("DOCKER_HOST", "unix:///var/run/docker.sock"),
-		DefaultImage: getEnv("DEFAULT_IMAGE", "custom-opencode:latest"),
+		DefaultImage: getEnv("DEFAULT_IMAGE", "ghcr.io/ducng99/opencodepod-client:latest"),
 		IdleTimeout:  getDurationEnv("APP_IDLE_TIMEOUT", 0),
 		SSHPublicKey: getEnv("APP_SSH_PUBLIC_KEY", ""),
 	}
