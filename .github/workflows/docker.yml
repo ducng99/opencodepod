@@ -36,8 +36,8 @@ jobs:
       - name: Build and push client image
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: docker/Dockerfile
+          context: ./docker
+          file: ./docker/Dockerfile
           push: true
           tags: ghcr.io/ducng99/opencodepod-client:latest
 
