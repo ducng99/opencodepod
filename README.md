@@ -44,7 +44,7 @@ All configuration is environment-driven:
 | `APP_LISTEN` | `:8080` | HTTP listen address |
 | `APP_TAILNET_HOST` | *(empty)* | Tailnet hostname advertised in UI links (e.g., `myhost.tailnet.ts.net`) |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | Docker daemon socket |
-| `DEFAULT_IMAGE` | `custom-opencode:latest` | Default Docker image for new projects |
+| `DEFAULT_IMAGE` | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
 | `APP_IDLE_TIMEOUT` | `0` | Idle timeout before auto-stop (0 = disabled) |
 | `APP_SSH_PUBLIC_KEY` | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
 
@@ -52,7 +52,7 @@ All configuration is environment-driven:
 
 ```bash
 export APP_LISTEN=:3000
-export DEFAULT_IMAGE=custom-opencode:latest
+export DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest
 export APP_SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC..."
 ./codepod-server
 ```
@@ -92,7 +92,7 @@ Response:
     "ssh_port": 49152,
     "web_port": 49153,
     "volume": "cp-vol-a1b2c3d4",
-    "image": "custom-opencode:latest"
+    "image": "ghcr.io/ducng99/opencodepod-client:latest"
   }
 ]
 ```
@@ -106,7 +106,7 @@ Content-Type: application/json
 {
   "name": "My Project",
   "git_repo": "https://github.com/user/repo.git",
-  "image": "custom-opencode:latest"
+  "image": "ghcr.io/ducng99/opencodepod-client:latest"
 }
 ```
 
@@ -155,7 +155,7 @@ docker build -t codepod .
 docker run -d \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -e DEFAULT_IMAGE=custom-opencode:latest \
+  -e DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest \
   --name codepod \
   codepod
 ```
