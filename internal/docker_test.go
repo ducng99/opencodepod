@@ -93,6 +93,25 @@ func TestDockerManager_ListProjects(t *testing.T) {
 	_ = projects
 }
 
+func TestDockerManager_CreateProject_PullsImage(t *testing.T) {
+	dm := skipIfNoDocker(t)
+	ctx := context.Background()
+
+	// Remove the image if present so we can test auto-pull.
+	_, _ = dm.client.ImageRemove(ctx, testImage, dockerclient.ImageRemoveOptions{Force: true})
+
+	req := &CreateRequest{Name: "test-autopull", Image: testImage}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed to auto-pull image: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	if p.Status == "" {
+		t.Error("expected non-empty status")
+	}
+}
+
 func TestDockerManager_CreateProject(t *testing.T) {
 	dm := skipIfNoDocker(t)
 	ctx := context.Background()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/netip"
 	"strconv"
@@ -97,6 +98,22 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		return nil, fmt.Errorf("volume create: %w", err)
 	}
 	_ = volResult.Volume.Name
+
+	// Ensure image is present; pull if missing.
+	if _, err := dm.client.ImageInspect(ctx, image); err != nil {
+		if errors.Is(err, errdefs.ErrNotFound) {
+			pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
+			if err != nil {
+				_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
+				return nil, fmt.Errorf("image pull: %w", err)
+			}
+			_, _ = io.Copy(io.Discard, pr)
+			_ = pr.Close()
+		} else {
+			_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
+			return nil, fmt.Errorf("image inspect: %w", err)
+		}
+	}
 
 	// Port bindings: let Docker assign random host ports
 	portBindings := network.PortMap{
