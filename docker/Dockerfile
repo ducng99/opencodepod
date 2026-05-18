@@ -37,8 +37,9 @@ USER coder
 ENV PATH="/home/coder/.opencode/bin:${PATH}"
 RUN curl -fsSL https://opencode.ai/install | bash
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+WORKDIR /home/coder/workspace
+
+ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
 CMD ["opencode"]
