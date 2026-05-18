@@ -38,15 +38,8 @@ go test ./internal/ -v -count=1 -run 'TestLabels|TestProject|TestVolume|TestCont
 
 - **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
-- **Go 1.22+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
+- **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
 - **Config**: all env-driven (`APP_LISTEN`, `APP_TAILNET_HOST`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`)
-
-## Docker SDK Quirks
-
-- Uses `github.com/docker/docker` v28.5.2+incompatible — not the v1 module path
-- Types live in `api/types`, `api/types/container`, `api/types/filters`, `api/types/volume`, `api/types/image`
-- `container.PullOptions` was renamed/moved; use `image.PullOptions` for `ImagePull`
-- `container.StopOptions{}` replaces the old `*int` timeout parameter
 
 ## Frontend
 

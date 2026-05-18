@@ -2,17 +2,16 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	dockerclient "github.com/docker/docker/client"
+	"github.com/containerd/errdefs"
+	"github.com/moby/moby/api/types/container"
+	dockerclient "github.com/moby/moby/client"
 )
 
 // testImage is a lightweight image that stays running so we can test start/stop.
@@ -36,16 +35,16 @@ func skipIfNoDocker(t *testing.T) *DockerManager {
 	// Verify we can actually reach the daemon by pinging it.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(ctx); err != nil {
+	if _, err := dm.client.Ping(ctx, dockerclient.PingOptions{}); err != nil {
 		t.Skipf("docker daemon unreachable: %v", err)
 	}
 
 	// Ensure test image is present; pull if missing.
-	if _, _, err := dm.client.ImageInspectWithRaw(ctx, testImage); err != nil {
-		if dockerclient.IsErrNotFound(err) {
+	if _, err := dm.client.ImageInspect(ctx, testImage); err != nil {
+		if errors.Is(err, errdefs.ErrNotFound) {
 			pullCtx, pullCancel := context.WithTimeout(context.Background(), 120*time.Second)
 			defer pullCancel()
-			pr, err := dm.client.ImagePull(pullCtx, testImage, image.PullOptions{})
+			pr, err := dm.client.ImagePull(pullCtx, testImage, dockerclient.ImagePullOptions{})
 			if err != nil {
 				t.Skipf("unable to pull test image %s: %v", testImage, err)
 			}
@@ -65,14 +64,21 @@ func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 	defer cancel()
 
 	// Remove container(s)
-	f := filters.NewArgs()
-	f.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	containers, _ := dm.client.ContainerList(ctx, container.ListOptions{All: true, Filters: f})
-	for _, c := range containers {
-		_ = dm.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true})
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	if err != nil {
+		t.Errorf("cleanup container list failed: %v", err)
+		return
+	}
+	for _, c := range result.Items {
+		if _, err := dm.client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+			t.Errorf("cleanup container remove failed: %v", err)
+		}
 	}
 	// Remove volume
-	_ = dm.client.VolumeRemove(ctx, VolumeName(id), true)
+	if _, err := dm.client.VolumeRemove(ctx, VolumeName(id), dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+		t.Errorf("cleanup volume remove failed: %v", err)
+	}
 }
 
 func TestDockerManager_ListProjects(t *testing.T) {
@@ -118,25 +124,25 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	}
 
 	// Verify volume exists
-	vol, err := dm.client.VolumeInspect(ctx, p.Volume)
+	volResult, err := dm.client.VolumeInspect(ctx, p.Volume, dockerclient.VolumeInspectOptions{})
 	if err != nil {
 		t.Fatalf("volume inspect failed: %v", err)
 	}
+	vol := volResult.Volume
 	if vol.Name != p.Volume {
 		t.Errorf("expected volume name %s, got %s", p.Volume, vol.Name)
 	}
 
 	// Verify container exists with correct labels
-	f := filters.NewArgs()
-	f.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{All: true, Filters: f})
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
 	if err != nil {
 		t.Fatalf("container list failed: %v", err)
 	}
-	if len(containers) != 1 {
-		t.Fatalf("expected 1 container, got %d", len(containers))
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(result.Items))
 	}
-	c := containers[0]
+	c := result.Items[0]
 	if c.Labels[LabelProjectID] != p.ID {
 		t.Errorf("expected container label project.id=%s", p.ID)
 	}
@@ -229,14 +235,13 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 	}
 
 	// Verify gone
-	f := filters.NewArgs()
-	f.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	containers, _ := dm.client.ContainerList(ctx, container.ListOptions{All: true, Filters: f})
-	if len(containers) > 0 {
-		t.Errorf("expected 0 containers after delete, got %d", len(containers))
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	result, _ := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	if len(result.Items) > 0 {
+		t.Errorf("expected 0 containers after delete, got %d", len(result.Items))
 	}
 
-	_, err = dm.client.VolumeInspect(ctx, VolumeName(id))
+	_, err = dm.client.VolumeInspect(ctx, VolumeName(id), dockerclient.VolumeInspectOptions{})
 	if err == nil {
 		t.Error("expected volume to be removed")
 	}
@@ -244,11 +249,11 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 
 func TestDockerManager_containerToProject(t *testing.T) {
 	dm := skipIfNoDocker(t)
-	c := &types.Container{
+	c := &container.Summary{
 		ID:     "cid",
 		Labels: map[string]string{LabelProjectID: "pid", LabelName: "n"},
-		State:  "running",
-		Ports:  []types.Port{{PrivatePort: 22, PublicPort: 10022}, {PrivatePort: 8080, PublicPort: 18080}},
+		State:  container.StateRunning,
+		Ports:  []container.PortSummary{{PrivatePort: 22, PublicPort: 10022}, {PrivatePort: 8080, PublicPort: 18080}},
 	}
 	p := dm.containerToProject(c)
 	if p.ID != "pid" {

@@ -2,17 +2,17 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
+	"net/netip"
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/volume"
-	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/containerd/errdefs"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	dockerclient "github.com/moby/moby/client"
 )
 
 type DockerManager struct {
@@ -33,10 +33,9 @@ func (dm *DockerManager) Close() error {
 }
 
 func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=true", LabelManaged))
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=true", LabelManaged))
 
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
@@ -44,8 +43,8 @@ func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
 		return nil, err
 	}
 
-	projects := make([]*Project, 0, len(containers))
-	for _, c := range containers {
+	projects := make([]*Project, 0, len(result.Items))
+	for _, c := range result.Items {
 		p := dm.containerToProject(&c)
 		projects = append(projects, p)
 	}
@@ -53,20 +52,19 @@ func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
 }
 
 func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, error) {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
 
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 0 {
+	if len(result.Items) == 0 {
 		return nil, fmt.Errorf("project not found: %s", id)
 	}
-	return dm.containerToProject(&containers[0]), nil
+	return dm.containerToProject(&result.Items[0]), nil
 }
 
 func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) (*Project, error) {
@@ -86,7 +84,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 
 	// Create volume
-	_, err := dm.client.VolumeCreate(ctx, volume.CreateOptions{
+	volResult, err := dm.client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
 		Name:   p.Volume,
 		Driver: "local",
 		Labels: map[string]string{
@@ -98,17 +96,18 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("volume create: %w", err)
 	}
+	_ = volResult.Volume.Name
 
 	// Port bindings: let Docker assign random host ports
-	portBindings := nat.PortMap{
-		"22/tcp":   []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "0"}},
-		"8080/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "0"}},
+	portBindings := network.PortMap{
+		network.MustParsePort("22/tcp"):   []network.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: "0"}},
+		network.MustParsePort("8080/tcp"): []network.PortBinding{{HostIP: netip.IPv4Unspecified(), HostPort: "0"}},
 	}
 
 	// Exposed ports must be declared in Config
-	exposedPorts := nat.PortSet{
-		"22/tcp":   struct{}{},
-		"8080/tcp": struct{}{},
+	exposedPorts := network.PortSet{
+		network.MustParsePort("22/tcp"):   struct{}{},
+		network.MustParsePort("8080/tcp"): struct{}{},
 	}
 
 	env := []string{}
@@ -134,25 +133,30 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		},
 	}
 
-	resp, err := dm.client.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, ContainerName(id))
+	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+		Config:     containerConfig,
+		HostConfig: hostConfig,
+		Name:       ContainerName(id),
+	})
 	if err != nil {
-		_ = dm.client.VolumeRemove(ctx, p.Volume, true)
+		_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if err := dm.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		_ = dm.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
-		_ = dm.client.VolumeRemove(ctx, p.Volume, true)
+	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+		_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container start: %w", err)
 	}
 
 	// Inspect to get actual ports
-	inspect, err := dm.client.ContainerInspect(ctx, resp.ID)
+	inspectResult, err := dm.client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
+	inspect := inspectResult.Container
 
-	p.Status = inspect.State.Status
+	p.Status = string(inspect.State.Status)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 
@@ -168,20 +172,19 @@ func (dm *DockerManager) StartProject(ctx context.Context, id string) (*Project,
 		return dm.refreshPorts(ctx, p)
 	}
 
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 0 {
+	if len(result.Items) == 0 {
 		return nil, fmt.Errorf("project not found: %s", id)
 	}
 
-	if err := dm.client.ContainerStart(ctx, containers[0].ID, container.StartOptions{}); err != nil {
+	if _, err := dm.client.ContainerStart(ctx, result.Items[0].ID, dockerclient.ContainerStartOptions{}); err != nil {
 		return nil, fmt.Errorf("start: %w", err)
 	}
 	return dm.refreshPorts(ctx, p)
@@ -196,52 +199,50 @@ func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, 
 		return p, nil
 	}
 
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 0 {
+	if len(result.Items) == 0 {
 		return nil, fmt.Errorf("project not found: %s", id)
 	}
 
-	if err := dm.client.ContainerStop(ctx, containers[0].ID, container.StopOptions{}); err != nil {
+	if _, err := dm.client.ContainerStop(ctx, result.Items[0].ID, dockerclient.ContainerStopOptions{}); err != nil {
 		return nil, fmt.Errorf("stop: %w", err)
 	}
 	return dm.GetProject(ctx, id)
 }
 
 func (dm *DockerManager) DeleteProject(ctx context.Context, id string) error {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
 		return err
 	}
-	for _, c := range containers {
-		if err := dm.client.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true}); err != nil {
+	for _, c := range result.Items {
+		if _, err := dm.client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("remove container: %w", err)
 		}
 	}
-	if err := dm.client.VolumeRemove(ctx, VolumeName(id), true); err != nil {
+	if _, err := dm.client.VolumeRemove(ctx, VolumeName(id), dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
 		// Volume may already be removed with container
-		if !dockerclient.IsErrNotFound(err) {
+		if !errors.Is(err, errdefs.ErrNotFound) {
 			return fmt.Errorf("remove volume: %w", err)
 		}
 	}
 	return nil
 }
 
-func (dm *DockerManager) containerToProject(c *types.Container) *Project {
+func (dm *DockerManager) containerToProject(c *container.Summary) *Project {
 	p := ProjectFromLabels(c.Labels[LabelProjectID], c.Labels)
-	p.Status = c.State
+	p.Status = string(c.State)
 	if p.Status == "" {
 		p.Status = c.Status
 	}
@@ -259,30 +260,30 @@ func (dm *DockerManager) containerToProject(c *types.Container) *Project {
 }
 
 func (dm *DockerManager) refreshPorts(ctx context.Context, p *Project) (*Project, error) {
-	filter := filters.NewArgs()
-	filter.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
-	containers, err := dm.client.ContainerList(ctx, container.ListOptions{
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
+	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 0 {
+	if len(result.Items) == 0 {
 		return nil, fmt.Errorf("project not found: %s", p.ID)
 	}
-	inspect, err := dm.client.ContainerInspect(ctx, containers[0].ID)
+	inspectResult, err := dm.client.ContainerInspect(ctx, result.Items[0].ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
-	p.Status = inspect.State.Status
+	inspect := inspectResult.Container
+	p.Status = string(inspect.State.Status)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 	return p, nil
 }
 
-func hostPortFromInspect(inspect *types.ContainerJSON, portKey string) int {
-	bindings, ok := inspect.NetworkSettings.Ports[nat.Port(portKey)]
+func hostPortFromInspect(inspect *container.InspectResponse, portKey string) int {
+	bindings, ok := inspect.NetworkSettings.Ports[network.MustParsePort(portKey)]
 	if !ok || len(bindings) == 0 {
 		return 0
 	}
