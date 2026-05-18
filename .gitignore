@@ -1,0 +1,8 @@
+/codepod-server
+*.exe
+*.test
+*.out
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
