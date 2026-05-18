@@ -36,6 +36,7 @@ RUN mkdir -p /home/coder/workspace && chown -R coder:coder /home/coder
 USER coder
 ENV PATH="/home/coder/.opencode/bin:${PATH}"
 RUN curl -fsSL https://opencode.ai/install | bash
+COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.jsonc
 
 COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 

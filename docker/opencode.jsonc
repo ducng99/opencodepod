@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    ".rules",
+    "AGENT.md",
+    ".cursorrules",
+    "CLAUDE.md",
+    "GEMINI.md",
+  ],
+  "agent": {
+    "build": {
+      "permission": {
+        "bash": "allow",
+      },
+    },
+  },
+  "permission": {
+    "bash": {
+      "ls *": "allow",
+      "grep *": "allow",
+      "find *": "allow",
+      "head *": "allow",
+      "tail *": "allow",
+      "sort *": "allow",
+      "wc *": "allow",
+      "git log *": "allow",
+      "git diff *": "allow",
+      "git show *": "allow",
+      "gh pr view *": "allow",
+      "gh pr diff *": "allow",
+      "gh pr list *": "allow",
+      "go mod verify": "allow",
+      "go mod why *": "allow",
+      "go doc *": "allow",
+    },
+  },
+  "watcher": {
+    "ignore": ["node_modules/**", "dist/**", ".git/**", "vendor/**"],
+  },
+}
