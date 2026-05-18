@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"codepod/frontend"
-	"codepod/internal"
+	"opencodepod/frontend"
+	"opencodepod/internal"
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 		}
 	}()
 
-	fmt.Printf("CodePod listening on %s\n", cfg.ListenAddr)
+	fmt.Printf("OpenCodePod listening on %s\n", cfg.ListenAddr)
 	if cfg.TailnetHost != "" {
 		fmt.Printf("Tailnet host: %s\n", cfg.TailnetHost)
 	}

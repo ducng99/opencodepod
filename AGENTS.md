@@ -1,4 +1,4 @@
-# CodePod — Agent Notes
+# OpenCodePod — Agent Notes
 
 Stateless Go orchestrator that manages Docker containers as isolated project workspaces. No database — all runtime state comes from Docker labels and live container queries.
 
@@ -8,13 +8,13 @@ Stateless Go orchestrator that manages Docker containers as isolated project wor
 - **Packages**:
   - `internal/` — all business logic (handlers, docker client, config, domain types)
   - `frontend/` — static UI served via `//go:embed all:dist`
-- **State**: Docker container labels (`codepod.managed=true`, `codepod.project.id`, etc.) are the source of truth. Server restart = re-list containers.
+- **State**: Docker container labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.) are the source of truth. Server restart = re-list containers.
 
 ## Build & Run
 
 ```bash
-go build -o codepod-server ./cmd/server
-./codepod-server
+go build -o opencodepod-server ./cmd/server
+./opencodepod-server
 ```
 
 No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.

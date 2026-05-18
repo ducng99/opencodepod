@@ -1,4 +1,4 @@
-module codepod
+module opencodepod
 
 go 1.26
 

@@ -1,6 +1,6 @@
-# CodePod
+# OpenCodePod
 
-CodePod is a lightweight, stateless Go server that turns Docker containers into isolated project workspaces. It manages the full lifecycle of development environments — create, start, stop, and delete — with zero database dependency. All state lives in Docker container labels and live container queries.
+OpenCodePod is a lightweight, stateless Go server that turns Docker containers into isolated project workspaces. It manages the full lifecycle of development environments — create, start, stop, and delete — with zero database dependency. All state lives in Docker container labels and live container queries.
 
 ## Features
 
@@ -24,7 +24,7 @@ CodePod is a lightweight, stateless Go server that turns Docker containers into 
 ### Build
 
 ```bash
-go build -o codepod-server ./cmd/server
+go build -o opencodepod-server ./cmd/server
 ```
 
 ### Run
@@ -54,7 +54,7 @@ All configuration is environment-driven:
 export APP_LISTEN=:3000
 export DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest
 export APP_SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC..."
-./codepod-server
+./opencodepod-server
 ```
 
 ## Using the Web UI
@@ -148,23 +148,23 @@ Re-inspects the container and returns the project with refreshed port mappings.
 
 ## Docker Deployment
 
-You can also run CodePod itself inside Docker:
+You can also run OpenCodePod itself inside Docker:
 
 ```bash
-docker build -t codepod .
+docker build -t opencodepod .
 docker run -d \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -e DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest \
-  --name codepod \
-  codepod
+  --name opencodepod \
+  opencodepod
 ```
 
-> **Note:** Mount the Docker socket read-only. CodePod needs to create and manage containers on your behalf.
+> **Note:** Mount the Docker socket read-only. OpenCodePod needs to create and manage containers on your behalf.
 
 ## How It Works
 
-- **No database** — Project state is stored entirely in Docker labels (`codepod.managed=true`, `codepod.project.id`, etc.).
+- **No database** — Project state is stored entirely in Docker labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.).
 - **Naming** — Containers are named `cp-<id>`, volumes `cp-vol-<id>`.
 - **Port assignment** — Docker randomly assigns host ports for `22/tcp` and `8080/tcp`. CodePod inspects the container after start to discover them.
 - **Volumes** — Each project gets a dedicated Docker volume mounted at `/home/coder/workspace` inside the container.
@@ -175,7 +175,7 @@ docker run -d \
 ### Project Structure
 
 ```
-codepod/
+opencodepod/
 ├── cmd/server/main.go      # Entry point
 ├── internal/
 │   ├── config.go           # Environment config

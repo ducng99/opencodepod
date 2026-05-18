@@ -3,7 +3,7 @@
 *.dll
 *.so
 *.dylib
-/codepod-server
+/opencodepod-server
 
 # Test and build artifacts
 *.test

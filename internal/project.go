@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	LabelManaged   = "codepod.managed"
-	LabelProjectID = "codepod.project.id"
-	LabelName      = "codepod.project.name"
-	LabelGitRepo   = "codepod.project.git_repo"
-	LabelImage     = "codepod.project.image"
+	LabelManaged   = "opencodepod.managed"
+	LabelProjectID = "opencodepod.project.id"
+	LabelName      = "opencodepod.project.name"
+	LabelGitRepo   = "opencodepod.project.git_repo"
+	LabelImage     = "opencodepod.project.image"
 )
 
 type Project struct {
