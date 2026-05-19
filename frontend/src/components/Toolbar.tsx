@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LoadingButton } from "./LoadingButton";
 
 export function Toolbar({ onCreate }: { onCreate: (name: string, gitRepo: string, image: string) => Promise<void> }) {
   const [name, setName] = useState("");
@@ -49,13 +50,13 @@ export function Toolbar({ onCreate }: { onCreate: (name: string, gitRepo: string
         onChange={(e) => setImage(e.target.value)}
         className="px-3 py-2 bg-oc-surface border border-oc-border rounded-md text-sm text-oc-text placeholder:text-oc-text-muted focus:outline-none focus:ring-2 focus:ring-oc-accent min-w-[180px]"
       />
-      <button
+      <LoadingButton
         type="submit"
-        disabled={loading}
+        loading={loading}
         className="px-4 py-2 bg-oc-accent hover:bg-oc-accent-hover disabled:opacity-50 text-white text-sm font-medium rounded-md transition-colors"
       >
         + New Project
-      </button>
+      </LoadingButton>
     </form>
   );
 }

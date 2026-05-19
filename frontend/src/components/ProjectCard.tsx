@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Project } from "../types";
 import { Badge } from "./Badge";
+import { LoadingButton } from "./LoadingButton";
 
 function host() {
   return location.hostname;
@@ -16,9 +18,40 @@ export function ProjectCard({
   onStop: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const [starting, setStarting] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const h = host();
   const sshCmd = project.ssh_port ? `ssh -p ${project.ssh_port} coder@${h}` : "";
   const webUrl = project.web_port ? `http://${h}:${project.web_port}` : "";
+
+  const handleStart = async () => {
+    setStarting(true);
+    try {
+      await onStart(project.id);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const handleStop = async () => {
+    setStopping(true);
+    try {
+      await onStop(project.id);
+    } finally {
+      setStopping(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(project.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="bg-oc-surface border border-oc-border rounded-xl p-4 flex flex-col gap-3">
@@ -70,26 +103,29 @@ export function ProjectCard({
 
       <div className="flex flex-wrap gap-2 mt-auto pt-2">
         {project.status !== "running" ? (
-          <button
-            onClick={() => onStart(project.id)}
+          <LoadingButton
+            onClick={handleStart}
+            loading={starting}
             className="px-3 py-1.5 bg-oc-green hover:bg-oc-green-hover text-white text-xs font-medium rounded-md transition-colors"
           >
             Start
-          </button>
+          </LoadingButton>
         ) : (
-          <button
-            onClick={() => onStop(project.id)}
+          <LoadingButton
+            onClick={handleStop}
+            loading={stopping}
             className="px-3 py-1.5 bg-oc-accent hover:bg-oc-accent-hover text-white text-xs font-medium rounded-md transition-colors"
           >
             Stop
-          </button>
+          </LoadingButton>
         )}
-        <button
-          onClick={() => onDelete(project.id)}
+        <LoadingButton
+          onClick={handleDelete}
+          loading={deleting}
           className="px-3 py-1.5 bg-oc-red hover:bg-oc-red-hover text-white text-xs font-medium rounded-md transition-colors"
         >
           Delete
-        </button>
+        </LoadingButton>
       </div>
     </div>
   );

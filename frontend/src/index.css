@@ -17,3 +17,16 @@
   --color-oc-red-hover: #dc2626;
   --color-oc-code-bg: #111111;
 }
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-sweep {
+  animation: shimmer-sweep 1.5s ease-in-out infinite;
+}
