@@ -99,19 +99,15 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 	_ = volResult.Volume.Name
 
-	// Ensure image is present; pull if missing.
-	if _, err := dm.client.ImageInspect(ctx, image); err != nil {
-		if errors.Is(err, errdefs.ErrNotFound) {
-			pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
-			if err != nil {
-				_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
-				return nil, fmt.Errorf("image pull: %w", err)
-			}
-			_, _ = io.Copy(io.Discard, pr)
-			_ = pr.Close()
-		} else {
+	// Try to pull the latest image; if that fails, fall back to a locally cached copy.
+	pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
+	if err == nil {
+		_, _ = io.Copy(io.Discard, pr)
+		_ = pr.Close()
+	} else {
+		if _, inspectErr := dm.client.ImageInspect(ctx, image); inspectErr != nil {
 			_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
-			return nil, fmt.Errorf("image inspect: %w", err)
+			return nil, fmt.Errorf("image pull failed and no local image found: %w", err)
 		}
 	}
 
