@@ -7,7 +7,6 @@ import (
 
 type Config struct {
 	ListenAddr   string
-	TailnetHost  string
 	DockerHost   string
 	DefaultImage string
 	IdleTimeout  time.Duration
@@ -17,7 +16,6 @@ type Config struct {
 func LoadConfig() *Config {
 	cfg := &Config{
 		ListenAddr:   getEnv("APP_LISTEN", ":8080"),
-		TailnetHost:  getEnv("APP_TAILNET_HOST", ""),
 		DockerHost:   getEnv("DOCKER_HOST", "unix:///var/run/docker.sock"),
 		DefaultImage: getEnv("DEFAULT_IMAGE", "ghcr.io/ducng99/opencodepod-client:latest"),
 		IdleTimeout:  getDurationEnv("APP_IDLE_TIMEOUT", 0),

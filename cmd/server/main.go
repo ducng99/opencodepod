@@ -46,9 +46,6 @@ func main() {
 	}()
 
 	fmt.Printf("OpenCodePod listening on %s\n", cfg.ListenAddr)
-	if cfg.TailnetHost != "" {
-		fmt.Printf("Tailnet host: %s\n", cfg.TailnetHost)
-	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

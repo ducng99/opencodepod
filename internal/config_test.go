@@ -7,7 +7,6 @@ import (
 func TestLoadConfigDefaults(t *testing.T) {
 	// Ensure environment is clean for these keys
 	t.Setenv("APP_LISTEN", "")
-	t.Setenv("APP_TAILNET_HOST", "")
 	t.Setenv("DOCKER_HOST", "")
 	t.Setenv("DEFAULT_IMAGE", "")
 	t.Setenv("APP_IDLE_TIMEOUT", "")
@@ -18,14 +17,11 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.ListenAddr != ":8080" {
 		t.Errorf("expected ListenAddr ':8080', got '%s'", cfg.ListenAddr)
 	}
-	if cfg.TailnetHost != "" {
-		t.Errorf("expected TailnetHost '', got '%s'", cfg.TailnetHost)
-	}
 	if cfg.DockerHost != "unix:///var/run/docker.sock" {
 		t.Errorf("expected DockerHost 'unix:///var/run/docker.sock', got '%s'", cfg.DockerHost)
 	}
-	if cfg.DefaultImage != "custom-opencode:latest" {
-		t.Errorf("expected DefaultImage 'custom-opencode:latest', got '%s'", cfg.DefaultImage)
+	if cfg.DefaultImage != "ghcr.io/ducng99/opencodepod-client:latest" {
+		t.Errorf("expected DefaultImage 'ghcr.io/ducng99/opencodepod-client:latest', got '%s'", cfg.DefaultImage)
 	}
 	if cfg.IdleTimeout != 0 {
 		t.Errorf("expected IdleTimeout 0, got %v", cfg.IdleTimeout)
@@ -37,7 +33,6 @@ func TestLoadConfigDefaults(t *testing.T) {
 
 func TestLoadConfigEnvironment(t *testing.T) {
 	t.Setenv("APP_LISTEN", ":9090")
-	t.Setenv("APP_TAILNET_HOST", "myhost.tailnet.ts.net")
 	t.Setenv("DOCKER_HOST", "tcp://1.2.3.4:2376")
 	t.Setenv("DEFAULT_IMAGE", "myimage:v1")
 	t.Setenv("APP_IDLE_TIMEOUT", "30m")
@@ -46,9 +41,6 @@ func TestLoadConfigEnvironment(t *testing.T) {
 
 	if cfg.ListenAddr != ":9090" {
 		t.Errorf("expected ListenAddr ':9090', got '%s'", cfg.ListenAddr)
-	}
-	if cfg.TailnetHost != "myhost.tailnet.ts.net" {
-		t.Errorf("expected TailnetHost 'myhost.tailnet.ts.net', got '%s'", cfg.TailnetHost)
 	}
 	if cfg.DockerHost != "tcp://1.2.3.4:2376" {
 		t.Errorf("expected DockerHost 'tcp://1.2.3.4:2376', got '%s'", cfg.DockerHost)

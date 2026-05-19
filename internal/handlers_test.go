@@ -15,7 +15,6 @@ func setupTestServer(t *testing.T) (*Server, *DockerManager) {
 	dm := skipIfNoDocker(t)
 	cfg := &Config{
 		ListenAddr:   ":8080",
-		TailnetHost:  "testhost.tailnet.ts.net",
 		DefaultImage: testImage,
 	}
 	server := NewServer(cfg, dm)

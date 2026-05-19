@@ -11,12 +11,11 @@ OpenCodePod is a lightweight, stateless Go server that turns Docker containers i
 - **Git Clone on Boot** — Pass a `git_repo` and the container receives it via the `GIT_REPO` environment variable.
 - **SSH Public Key Injection** — Configure a global SSH public key via environment variable.
 - **Resource Limits** — Optionally set CPU and memory constraints for all project containers.
-- **Tailscale Friendly** — Optionally advertise a Tailnet host for easy remote access URLs.
 - **Stateless** — Server restart? No problem. State is reconstructed by querying Docker on every request.
 
 ## Prerequisites
 
-- [Go](https://go.dev/) 1.22+
+- [Go](https://go.dev/) 1.26+
 - [Docker](https://docs.docker.com/get-docker/) Engine (running locally or accessible via socket)
 
 ## Quick Start
@@ -42,7 +41,6 @@ All configuration is environment-driven:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `APP_LISTEN` | `:8080` | HTTP listen address |
-| `APP_TAILNET_HOST` | *(empty)* | Tailnet hostname advertised in UI links (e.g., `myhost.tailnet.ts.net`) |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | Docker daemon socket |
 | `DEFAULT_IMAGE` | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
 | `APP_IDLE_TIMEOUT` | `0` | Idle timeout before auto-stop (0 = disabled) |

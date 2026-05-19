@@ -32,9 +32,6 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	for _, p := range projects {
-		s.enrichURLs(p)
-	}
 	s.writeJSON(w, http.StatusOK, projects)
 }
 
@@ -53,7 +50,6 @@ func (s *Server) handleCreate(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.enrichURLs(project)
 	s.writeJSON(w, http.StatusCreated, project)
 }
 
@@ -64,7 +60,6 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusNotFound, err)
 		return
 	}
-	s.enrichURLs(project)
 	s.writeJSON(w, http.StatusOK, project)
 }
 
@@ -75,7 +70,6 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.enrichURLs(project)
 	s.writeJSON(w, http.StatusOK, project)
 }
 
@@ -86,7 +80,6 @@ func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.enrichURLs(project)
 	s.writeJSON(w, http.StatusOK, project)
 }
 
@@ -112,20 +105,7 @@ func (s *Server) handlePorts(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	s.enrichURLs(project)
 	s.writeJSON(w, http.StatusOK, project)
-}
-
-func (s *Server) enrichURLs(p *Project) {
-	if s.cfg.TailnetHost == "" {
-		return
-	}
-	if p.SSHPort > 0 {
-		// Not stored in JSON, but frontend can compute
-	}
-	if p.WebPort > 0 {
-		// Not stored in JSON
-	}
 }
 
 func (s *Server) writeJSON(w http.ResponseWriter, status int, v interface{}) {
