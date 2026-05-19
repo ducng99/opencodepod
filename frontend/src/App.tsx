@@ -60,12 +60,12 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-300">
+    <div className="min-h-screen bg-oc-bg text-oc-text-secondary">
       <Header status={status} error={error} />
       <main className="max-w-6xl mx-auto px-5 py-5">
         <Toolbar onCreate={handleCreate} />
         {projects.length === 0 ? (
-          <p className="text-slate-500">No projects yet.</p>
+          <p className="text-oc-text-muted">No projects yet.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((p) => (
