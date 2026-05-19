@@ -10,4 +10,6 @@ if [ -n "$GIT_REPO" ]; then
   echo "Clone complete."
 fi
 
+opencode upgrade || true
+
 exec "$@"

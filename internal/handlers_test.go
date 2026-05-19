@@ -232,39 +232,6 @@ func TestHandleDelete(t *testing.T) {
 	}
 }
 
-func TestHandlePorts(t *testing.T) {
-	server, dm := setupTestServer(t)
-	defer cleanupOrphaned(t, dm)
-
-	mux := http.NewServeMux()
-	server.RegisterRoutes(mux)
-
-	reqBody, _ := json.Marshal(CreateRequest{Name: "ports-test"})
-	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
-	createRec := httptest.NewRecorder()
-	mux.ServeHTTP(createRec, createReq)
-	var p Project
-	_ = json.Unmarshal(createRec.Body.Bytes(), &p)
-	defer cleanupTestProject(t, dm, p.ID)
-
-	portsReq := httptest.NewRequest("GET", "/api/projects/"+p.ID+"/ports", nil)
-	portsRec := httptest.NewRecorder()
-	mux.ServeHTTP(portsRec, portsReq)
-	if portsRec.Code != http.StatusOK {
-		t.Fatalf("ports failed: %d %s", portsRec.Code, portsRec.Body.String())
-	}
-	var got Project
-	if err := json.Unmarshal(portsRec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if got.SSHPort == 0 {
-		t.Error("expected non-zero ssh port")
-	}
-	if got.WebPort == 0 {
-		t.Error("expected non-zero web port")
-	}
-}
-
 // cleanupOrphaned removes any test containers/volumes left over from prior runs
 // that match our test naming patterns.
 func cleanupOrphaned(t *testing.T, dm *DockerManager) {

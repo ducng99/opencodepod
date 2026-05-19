@@ -2,13 +2,13 @@ package internal
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"net/netip"
 	"strconv"
-	"time"
 
 	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
@@ -22,7 +22,7 @@ type DockerManager struct {
 }
 
 func NewDockerManager(cfg *Config) (*DockerManager, error) {
-	cli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	cli, err := dockerclient.New(dockerclient.FromEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,8 @@ func generateID(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(letters))]
+		v, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		b[i] = letters[v.Int64()]
 	}
 	return string(b)
 }
