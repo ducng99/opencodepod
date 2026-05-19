@@ -4,10 +4,14 @@ set -e
 WORKSPACE="/home/coder/workspace"
 
 if [ -n "$GIT_REPO" ]; then
-  echo "Cloning $GIT_REPO into $WORKSPACE ..."
   cd "$WORKSPACE"
-  git clone "$GIT_REPO" .
-  echo "Clone complete."
+  if [ ! -d ".git" ]; then
+    echo "Cloning $GIT_REPO into $WORKSPACE ..."
+    git clone "$GIT_REPO" .
+    echo "Clone complete."
+  else
+    echo "Workspace already initialised, skipping clone."
+  fi
 fi
 
 # Install the provided SSH public key for the coder user
