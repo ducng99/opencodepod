@@ -53,19 +53,20 @@ func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
 }
 
 func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, error) {
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
-		All:     true,
-		Filters: filter,
-	})
+	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
 	if err != nil {
+		if errors.Is(err, errdefs.ErrNotFound) {
+			return nil, fmt.Errorf("project not found: %s", id)
+		}
 		return nil, err
 	}
-	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("project not found: %s", id)
-	}
-	return dm.containerToProject(&result.Items[0]), nil
+	inspect := inspectResult.Container
+
+	p := ProjectFromLabels(id, inspect.Config.Labels)
+	p.Status = string(inspect.State.Status)
+	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
+	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
+	return p, nil
 }
 
 func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) (*Project, error) {
@@ -182,25 +183,13 @@ func (dm *DockerManager) StartProject(ctx context.Context, id string) (*Project,
 		return nil, err
 	}
 	if p.Status == "running" {
-		return dm.refreshPorts(ctx, p)
+		return p, nil
 	}
 
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
-		All:     true,
-		Filters: filter,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("project not found: %s", id)
-	}
-
-	if _, err := dm.client.ContainerStart(ctx, result.Items[0].ID, dockerclient.ContainerStartOptions{}); err != nil {
+	if _, err := dm.client.ContainerStart(ctx, ContainerName(id), dockerclient.ContainerStartOptions{}); err != nil {
 		return nil, fmt.Errorf("start: %w", err)
 	}
-	return dm.refreshPorts(ctx, p)
+	return dm.GetProject(ctx, id)
 }
 
 func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, error) {
@@ -212,19 +201,7 @@ func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, 
 		return p, nil
 	}
 
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
-		All:     true,
-		Filters: filter,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("project not found: %s", id)
-	}
-
-	if _, err := dm.client.ContainerStop(ctx, result.Items[0].ID, dockerclient.ContainerStopOptions{}); err != nil {
+	if _, err := dm.client.ContainerStop(ctx, ContainerName(id), dockerclient.ContainerStopOptions{}); err != nil {
 		return nil, fmt.Errorf("stop: %w", err)
 	}
 	return dm.GetProject(ctx, id)
