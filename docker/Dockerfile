@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     vim \
     nano \
     ssh \
+    openssh-server \
     ca-certificates \
     gnupg \
     unzip \
@@ -23,14 +24,23 @@ RUN apt-get update && apt-get install -y \
     tree \
     sudo
 
+# Generate SSH host keys and harden sshd config
+RUN ssh-keygen -A \
+    && mkdir -p /var/run/sshd \
+    && sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config \
+    && echo "AllowUsers coder" >> /etc/ssh/sshd_config
+
 # Create user 'coder' with home directory and passwordless sudo
 RUN useradd -m -s /bin/bash coder \
     && usermod -aG sudo coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder
 
-# Ensure workspace exists and is owned by coder
-RUN mkdir -p /home/coder/workspace && chown -R coder:coder /home/coder
+# Ensure workspace and .ssh dir exist and are owned by coder
+RUN mkdir -p /home/coder/workspace /home/coder/.ssh \
+    && chown -R coder:coder /home/coder
 
 # Install opencode as user 'coder'
 USER coder

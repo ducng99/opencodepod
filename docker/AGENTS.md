@@ -17,7 +17,7 @@ Core build/runtime stack:
 - `python3`, `python3-pip`, `python3-venv`
 - `nodejs` (via apt — may be an older LTS; upgrade with `npm install -g n` if you need a specific version)
 - `vim`, `nano`, `unzip`, `zip`, `jq`, `htop`, `tree`
-- `openssh-client`
+- `openssh-server` (sshd runs on container start; public key auth only)
 
 ## OpenCode CLI
 
@@ -37,3 +37,4 @@ Core build/runtime stack:
 - Keep project files under `/home/coder/workspace` when possible
 - If you need a specific language version (e.g., newer Node or Python), install it inside the container rather than modifying the base image
 - The host binds random external ports for SSH and the web UI; you don't need to know them unless you are debugging networking
+- SSH access is configured automatically if the host sets `SSH_PUBLIC_KEY` — the key is written to `~coder/.ssh/authorized_keys` on container start

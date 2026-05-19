@@ -265,6 +265,55 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 	}
 }
 
+func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
+	ctx := context.Background()
+
+	cfgWithSSH := &Config{
+		ListenAddr:   ":8080",
+		DefaultImage: testImage,
+		SSHPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test",
+	}
+	dm, err := NewDockerManager(cfgWithSSH)
+	if err != nil {
+		t.Skipf("docker client unavailable: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dm.Close()
+	})
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+
+	req := &CreateRequest{Name: "test-ssh-key"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	// Inspect container to verify the SSH_PUBLIC_KEY env var is present.
+	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatalf("container inspect failed: %v", err)
+	}
+	inspect := inspectResult.Container
+
+	expected := "SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test"
+	found := false
+	for _, e := range inspect.Config.Env {
+		if e == expected {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected env var %q not found in container env %v", expected, inspect.Config.Env)
+	}
+}
+
 func TestDockerManager_containerToProject(t *testing.T) {
 	dm := skipIfNoDocker(t)
 	c := &container.Summary{
