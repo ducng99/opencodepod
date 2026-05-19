@@ -43,4 +43,4 @@ COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 WORKDIR /home/coder/workspace
 
 ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
-CMD ["opencode", "web", "--port", "8080"]
+CMD ["opencode", "web"]
