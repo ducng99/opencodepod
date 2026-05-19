@@ -13,6 +13,10 @@ Stateless Go orchestrator that manages Docker containers as isolated project wor
 ## Build & Run
 
 ```bash
+# Build frontend first (requires Bun)
+cd frontend && bun install && bun run build && cd ..
+
+# Build Go server
 go build -o opencodepod-server ./cmd/server
 ./opencodepod-server
 ```
@@ -43,7 +47,19 @@ go test ./internal/ -v -count=1 -run 'TestLabels|TestProject|TestVolume|TestCont
 
 ## Frontend
 
-Single vanilla-JS HTML file in `frontend/dist/index.html`. Dark-themed, polls `/api/projects` every 5s. No build step — edit the file directly.
+React 19 + TypeScript + Tailwind CSS v4, built with Bun.
+
+- **Source**: `frontend/src/` — components, API client, types
+- **Build output**: `frontend/dist/` — served via `//go:embed all:dist`
+- **Build step required**: `cd frontend && bun install && bun run build`
+- Auto-regenerates `dist/index.html`, `dist/main.js`, `dist/index.css`
+- `frontend/embed.go` includes `//go:generate bun run build` for convenience
+
+### Tech stack
+- React 19 with `useState`/`useEffect` (no external state library)
+- Tailwind CSS v4 with CSS-based configuration (`@import "tailwindcss"`)
+- Bun as package manager and bundler (`bun build` for JS/TSX, `tailwindcss` CLI for CSS)
+- Polling: `GET /api/projects` every 5s via `setInterval`
 
 ## What NOT to do
 

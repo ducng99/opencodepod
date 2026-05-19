@@ -6,3 +6,8 @@
 .idea/
 .DS_Store
 Thumbs.db
+
+# Frontend build artifacts
+frontend/dist/
+frontend/node_modules/
+
