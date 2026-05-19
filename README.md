@@ -41,9 +41,7 @@ All configuration is environment-driven:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `APP_LISTEN` | `:8080` | HTTP listen address |
-| `DOCKER_HOST` | `unix:///var/run/docker.sock` | Docker daemon socket |
 | `DEFAULT_IMAGE` | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
-| `APP_IDLE_TIMEOUT` | `0` | Idle timeout before auto-stop (0 = disabled) |
 | `APP_SSH_PUBLIC_KEY` | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
 
 ### Example with custom config

@@ -7,9 +7,7 @@ import (
 func TestLoadConfigDefaults(t *testing.T) {
 	// Ensure environment is clean for these keys
 	t.Setenv("APP_LISTEN", "")
-	t.Setenv("DOCKER_HOST", "")
 	t.Setenv("DEFAULT_IMAGE", "")
-	t.Setenv("APP_IDLE_TIMEOUT", "")
 	t.Setenv("APP_SSH_PUBLIC_KEY", "")
 
 	cfg := LoadConfig()
@@ -17,14 +15,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.ListenAddr != ":8080" {
 		t.Errorf("expected ListenAddr ':8080', got '%s'", cfg.ListenAddr)
 	}
-	if cfg.DockerHost != "unix:///var/run/docker.sock" {
-		t.Errorf("expected DockerHost 'unix:///var/run/docker.sock', got '%s'", cfg.DockerHost)
-	}
 	if cfg.DefaultImage != "ghcr.io/ducng99/opencodepod-client:latest" {
 		t.Errorf("expected DefaultImage 'ghcr.io/ducng99/opencodepod-client:latest', got '%s'", cfg.DefaultImage)
-	}
-	if cfg.IdleTimeout != 0 {
-		t.Errorf("expected IdleTimeout 0, got %v", cfg.IdleTimeout)
 	}
 	if cfg.SSHPublicKey != "" {
 		t.Errorf("expected SSHPublicKey '', got '%s'", cfg.SSHPublicKey)
@@ -33,23 +25,15 @@ func TestLoadConfigDefaults(t *testing.T) {
 
 func TestLoadConfigEnvironment(t *testing.T) {
 	t.Setenv("APP_LISTEN", ":9090")
-	t.Setenv("DOCKER_HOST", "tcp://1.2.3.4:2376")
 	t.Setenv("DEFAULT_IMAGE", "myimage:v1")
-	t.Setenv("APP_IDLE_TIMEOUT", "30m")
 	t.Setenv("APP_SSH_PUBLIC_KEY", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
 	cfg := LoadConfig()
 
 	if cfg.ListenAddr != ":9090" {
 		t.Errorf("expected ListenAddr ':9090', got '%s'", cfg.ListenAddr)
 	}
-	if cfg.DockerHost != "tcp://1.2.3.4:2376" {
-		t.Errorf("expected DockerHost 'tcp://1.2.3.4:2376', got '%s'", cfg.DockerHost)
-	}
 	if cfg.DefaultImage != "myimage:v1" {
 		t.Errorf("expected DefaultImage 'myimage:v1', got '%s'", cfg.DefaultImage)
-	}
-	if cfg.IdleTimeout != 30*60*1000*1000*1000 {
-		t.Errorf("expected IdleTimeout 30m, got %v", cfg.IdleTimeout)
 	}
 	if cfg.SSHPublicKey != "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test" {
 		t.Errorf("expected SSHPublicKey to match, got '%s'", cfg.SSHPublicKey)
@@ -65,16 +49,5 @@ func TestGetEnv(t *testing.T) {
 	t.Setenv("TEST_KEY", "")
 	if v := getEnv("TEST_KEY", "default"); v != "default" {
 		t.Errorf("expected 'default', got '%s'", v)
-	}
-}
-
-func TestGetDurationEnv(t *testing.T) {
-	t.Setenv("DUR_KEY", "5h")
-	if d := getDurationEnv("DUR_KEY", 0); d != 5*60*60*1000*1000*1000 {
-		t.Errorf("expected 5h, got %v", d)
-	}
-	t.Setenv("DUR_KEY", "invalid")
-	if d := getDurationEnv("DUR_KEY", 1000*1000*1000); d != 1000*1000*1000 {
-		t.Errorf("expected fallback 1s, got %v", d)
 	}
 }

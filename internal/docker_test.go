@@ -22,7 +22,6 @@ func skipIfNoDocker(t *testing.T) *DockerManager {
 	cfg := &Config{
 		ListenAddr:   ":8080",
 		DefaultImage: testImage,
-		DockerHost:   "",
 	}
 	dm, err := NewDockerManager(cfg)
 	if err != nil {

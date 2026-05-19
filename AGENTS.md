@@ -6,8 +6,8 @@ Stateless Go orchestrator that manages Docker containers as isolated project wor
 
 - **Entry**: `cmd/server/main.go` — boots HTTP server on `APP_LISTEN` (default `:8080`)
 - **Packages**:
-  - `internal/` — all business logic (handlers, docker client, config, domain types)
-  - `frontend/` — static UI served via `//go:embed all:dist`
+    - `internal/` — all business logic (handlers, docker client, config, domain types)
+    - `frontend/` — static UI served via `//go:embed all:dist`
 - **State**: Docker container labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.) are the source of truth. Server restart = re-list containers.
 
 ## Build & Run
@@ -28,9 +28,6 @@ No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 ```bash
 # Run all tests (includes Docker integration tests — need Docker daemon)
 go test ./internal/ -v -count=1 -timeout 5m
-
-# Run only unit tests (no Docker needed)
-go test ./internal/ -v -count=1 -run 'TestLabels|TestProject|TestVolume|TestContainer|TestParse|TestUnits|TestConfig|TestGet|TestHandleCreate_BadRequest'
 ```
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)
@@ -43,7 +40,7 @@ go test ./internal/ -v -count=1 -run 'TestLabels|TestProject|TestVolume|TestCont
 - **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
-- **Config**: all env-driven (`APP_LISTEN`, `DOCKER_HOST`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`)
+- **Config**: all env-driven (`APP_LISTEN`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`)
 
 ## Frontend
 
@@ -56,6 +53,7 @@ React 19 + TypeScript + Tailwind CSS v4, built with Bun.
 - `frontend/embed.go` includes `//go:generate bun run build` for convenience
 
 ### Tech stack
+
 - React 19 with `useState`/`useEffect` (no external state library)
 - Tailwind CSS v4 with CSS-based configuration (`@import "tailwindcss"`)
 - Bun as package manager and bundler (`bun build` for JS/TSX, `tailwindcss` CLI for CSS)
