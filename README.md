@@ -43,6 +43,8 @@ All configuration is environment-driven:
 | `APP_LISTEN` | `:8080` | HTTP listen address |
 | `DEFAULT_IMAGE` | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
 | `APP_SSH_PUBLIC_KEY` | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
+| `OPENCODE_CONFIG_PATH` | *(empty)* | Host path to a custom `opencode.jsonc` mounted read-only into every client container |
+| `OPENCODE_CONFIG_TARGET` | *(empty)* | Container path where the config is mounted. If empty, defaults to `/etc/opencode-config.jsonc` (the default image's entrypoint copies it to `~/.config/opencode/opencode.jsonc`). Set this when using a custom image that expects the config at a specific location, e.g. `/home/ubuntu/.config/opencode/opencode.jsonc`. |
 
 ### Example with custom config
 
@@ -50,7 +52,24 @@ All configuration is environment-driven:
 export APP_LISTEN=:3000
 export DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest
 export APP_SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC..."
+export OPENCODE_CONFIG_PATH=/host/path/to/opencode.jsonc
 ./opencodepod-server
+```
+
+### Docker Compose example
+
+```yaml
+services:
+  server:
+    image: ghcr.io/ducng99/opencodepod-server:latest
+    ports:
+      - 10000:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./opencode.jsonc:/app/opencode.jsonc:ro
+    environment:
+      APP_LISTEN: 0.0.0.0:8080
+      OPENCODE_CONFIG_PATH: /app/opencode.jsonc
 ```
 
 ## Using the Web UI
@@ -163,7 +182,7 @@ docker run -d \
 - **No database** — Project state is stored entirely in Docker labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.).
 - **Naming** — Containers are named `cp-<id>`, volumes `cp-vol-<id>`.
 - **Port assignment** — Docker randomly assigns host ports for `22/tcp` and `8080/tcp`. CodePod inspects the container after start to discover them.
-- **Volumes** — Each project gets a dedicated Docker volume mounted at `/home/coder/workspace` inside the container.
+- **Volumes** — Each project gets a dedicated Docker volume mounted at `/workspace` inside the container.
 - **Restart policy** — Unless stopped via the API, containers use Docker's `unless-stopped` restart policy.
 
 ## Development

@@ -139,9 +139,18 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		Env:          env,
 	}
 
+	binds := []string{fmt.Sprintf("%s:/workspace", p.Volume)}
+	if dm.cfg.OpenCodeConfigPath != "" {
+		target := dm.cfg.OpenCodeConfigTarget
+		if target == "" {
+			target = "/etc/opencode-config.jsonc"
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s:ro", dm.cfg.OpenCodeConfigPath, target))
+	}
+
 	hostConfig := &container.HostConfig{
 		PortBindings: portBindings,
-		Binds:        []string{fmt.Sprintf("%s:/home/coder/workspace", p.Volume)},
+		Binds:        binds,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},

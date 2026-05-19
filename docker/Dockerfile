@@ -39,8 +39,8 @@ RUN useradd -m -s /bin/bash coder \
     && chmod 0440 /etc/sudoers.d/coder
 
 # Ensure workspace and .ssh dir exist and are owned by coder
-RUN mkdir -p /home/coder/workspace /home/coder/.ssh \
-    && chown -R coder:coder /home/coder
+RUN mkdir -p /workspace /home/coder/.ssh \
+    && chown -R coder:coder /home/coder /workspace
 
 # Install opencode as user 'coder'
 USER coder
@@ -50,7 +50,7 @@ COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.js
 
 COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 
-WORKDIR /home/coder/workspace
+WORKDIR /workspace
 
 ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
 CMD ["opencode", "web"]

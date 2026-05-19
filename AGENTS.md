@@ -40,7 +40,7 @@ go test ./internal/ -v -count=1 -timeout 5m
 - **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
-- **Config**: all env-driven (`APP_LISTEN`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`)
+- **Config**: all env-driven (`APP_LISTEN`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`, `OPENCODE_CONFIG_PATH`, `OPENCODE_CONFIG_TARGET`)
 
 ## Frontend
 

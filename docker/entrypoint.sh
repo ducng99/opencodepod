@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-WORKSPACE="/home/coder/workspace"
+WORKSPACE="/workspace"
 
 if [ -n "$GIT_REPO" ]; then
   cd "$WORKSPACE"
@@ -12,6 +12,13 @@ if [ -n "$GIT_REPO" ]; then
   else
     echo "Workspace already initialised, skipping clone."
   fi
+fi
+
+# If a custom opencode config was bind-mounted by the orchestrator, copy it into place.
+# Using ~ here lets this work regardless of the actual username (e.g. custom images).
+if [ -f /etc/opencode-config.jsonc ]; then
+  mkdir -p ~/.config/opencode
+  cp /etc/opencode-config.jsonc ~/.config/opencode/opencode.jsonc
 fi
 
 # Install the provided SSH public key for the coder user
