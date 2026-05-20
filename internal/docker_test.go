@@ -421,3 +421,62 @@ func TestDockerManager_refreshPorts(t *testing.T) {
 		t.Error("expected non-zero WebPort after refresh")
 	}
 }
+
+func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
+	ctx := context.Background()
+
+	cfgWithHosts := &Config{
+		ListenAddr:   ":8080",
+		DefaultImage: testImage,
+		Hosts: map[string]string{
+			"myapp.local": "192.168.1.100",
+			"db.local":    "10.0.0.5",
+		},
+	}
+	dm, err := NewDockerManager(cfgWithHosts)
+	if err != nil {
+		t.Skipf("docker client unavailable: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dm.Close()
+	})
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+
+	req := &CreateRequest{Name: "test-hosts"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	// Inspect container to verify ExtraHosts are present.
+	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatalf("container inspect failed: %v", err)
+	}
+	inspect := inspectResult.Container
+
+	expectedHosts := []string{
+		"host.docker.internal:host-gateway",
+		"myapp.local:192.168.1.100",
+		"db.local:10.0.0.5",
+	}
+
+	for _, expected := range expectedHosts {
+		found := false
+		for _, h := range inspect.HostConfig.ExtraHosts {
+			if h == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected ExtraHost %q not found in container ExtraHosts %v", expected, inspect.HostConfig.ExtraHosts)
+		}
+	}
+}

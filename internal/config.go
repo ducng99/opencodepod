@@ -26,11 +26,12 @@ type GitConfig struct {
 }
 
 type Config struct {
-	ListenAddr   string    `json:"listen_addr"`
-	DefaultImage string    `json:"default_image"`
-	SSHPublicKey string    `json:"ssh_public_key"`
-	Mounts       []Mount   `json:"mounts"`
-	Git          GitConfig `json:"git"`
+	ListenAddr   string            `json:"listen_addr"`
+	DefaultImage string            `json:"default_image"`
+	SSHPublicKey string            `json:"ssh_public_key"`
+	Mounts       []Mount           `json:"mounts"`
+	Hosts        map[string]string `json:"hosts"`
+	Git          GitConfig         `json:"git"`
 }
 
 const defaultConfigPath = "config.json"

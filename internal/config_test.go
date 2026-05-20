@@ -233,3 +233,55 @@ func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
 		t.Errorf("expected SSHPublicKey 'abs-path-key', got '%s'", cfg.SSHPublicKey)
 	}
 }
+
+func TestLoadConfigHosts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	content := `{
+		"hosts": {
+			"myapp.local": "192.168.1.100",
+			"db.local": "10.0.0.5"
+		}
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Hosts) != 2 {
+		t.Fatalf("expected 2 hosts, got %d", len(cfg.Hosts))
+	}
+	if cfg.Hosts["myapp.local"] != "192.168.1.100" {
+		t.Errorf("expected myapp.local -> 192.168.1.100, got %s", cfg.Hosts["myapp.local"])
+	}
+	if cfg.Hosts["db.local"] != "10.0.0.5" {
+		t.Errorf("expected db.local -> 10.0.0.5, got %s", cfg.Hosts["db.local"])
+	}
+}
+
+func TestLoadConfigHostsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	content := `{}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Hosts should be nil when not specified in JSON
+	if cfg.Hosts != nil {
+		t.Errorf("expected Hosts to be nil when not specified, got %v", cfg.Hosts)
+	}
+}

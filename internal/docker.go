@@ -160,10 +160,15 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		binds = append(binds, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, mode))
 	}
 
+	extraHosts := []string{"host.docker.internal:host-gateway"}
+	for host, ip := range dm.cfg.Hosts {
+		extraHosts = append(extraHosts, fmt.Sprintf("%s:%s", host, ip))
+	}
+
 	hostConfig := &container.HostConfig{
-		PortBindings: portBindings,
-		Binds:        binds,
-		ExtraHosts:   []string{"host.docker.internal:host-gateway"},
+		PortBindings:  portBindings,
+		Binds:         binds,
+		ExtraHosts:    extraHosts,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},
