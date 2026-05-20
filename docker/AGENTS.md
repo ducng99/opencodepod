@@ -32,4 +32,4 @@ Core build/runtime stack:
 - If you need a specific language version (e.g., newer Node or Python), install it inside the container rather than modifying the base image
 - The host binds random external ports for SSH and the web UI; you don't need to know them unless you are debugging networking
 - SSH access is configured automatically if the host sets `SSH_PUBLIC_KEY` — the key is written to `~coder/.ssh/authorized_keys` on container start
-- Git SSH key is copied into the container at `/home/coder/.ssh/id_ed25519` before startup when `git.auth.ssh_key` is configured on the host. The entrypoint fixes ownership and sets `GIT_SSH_COMMAND` for `git clone`.
+- Git SSH key is copied into the container at `/home/coder/.ssh/id_ed25519` before startup when `git.auth.ssh_key` is configured on the host. The entrypoint fixes ownership, writes an `~/.ssh/config` entry for `github.com` and `gitlab.com`, and adds the key to the ssh-agent.

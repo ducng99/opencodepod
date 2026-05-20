@@ -3,11 +3,12 @@ set -e
 
 WORKSPACE="/workspaces"
 
+eval "$(ssh-agent -s)"
+
 # Configure Git SSH key if present
 if [ -f /home/coder/.ssh/id_ed25519 ]; then
   sudo chown coder:coder /home/coder/.ssh/id_ed25519
   sudo chmod 600 /home/coder/.ssh/id_ed25519
-  export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -i /home/coder/.ssh/id_ed25519"
   echo "Git SSH key configured."
 fi
 

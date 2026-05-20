@@ -62,6 +62,17 @@ RUN useradd -m -s /bin/bash coder \
 RUN mkdir -p /workspaces /home/coder/.ssh \
     && chown -R coder:coder /home/coder /workspaces
 
+# Write SSH client config for GitHub / GitLab
+RUN { \
+    echo "Host github.com gitlab.com"; \
+    echo "    IdentityFile ~/.ssh/id_ed25519"; \
+    echo "    IdentitiesOnly yes"; \
+    echo "    StrictHostKeyChecking accept-new"; \
+    echo "    AddKeysToAgent yes"; \
+} > /home/coder/.ssh/config \
+    && chown coder:coder /home/coder/.ssh/config \
+    && chmod 600 /home/coder/.ssh/config
+
 # Install opencode as user 'coder'
 USER coder
 ENV PATH="/home/coder/.opencode/bin:${PATH}"
