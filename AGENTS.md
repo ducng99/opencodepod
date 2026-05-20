@@ -32,12 +32,12 @@ go test ./internal/ -v -count=1 -timeout 5m
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)
 - `skipIfNoDocker()` helper skips the entire Docker suite if daemon is unreachable
-- Tests create real containers and clean them up via `cleanupTestProject()`
+- Tests create real containers/volumes and clean them up via `cleanupTestProject()`
 - Long timeout recommended: container pulls and start/stop cycles are slow
 
 ## Key Conventions
 
-- **Naming**: containers `cp-<id>`. Never look up by name; always by label.
+- **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
 - **Config**: loaded from `config.json` with JSON keys in snake_case (`listen_addr`, `default_image`, etc.). Missing fields fall back to hard-coded defaults.

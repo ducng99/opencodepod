@@ -5,6 +5,7 @@ export interface Project {
   status: string;
   ssh_port: number;
   web_port: number;
+  volume: string;
   image: string;
 }
 

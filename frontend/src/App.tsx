@@ -54,7 +54,7 @@ export function App() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete project? This cannot be undone.")) return;
+    if (!confirm("Delete project and its volume? This cannot be undone.")) return;
     await deleteProject(id);
     await refresh();
   };

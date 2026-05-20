@@ -4,7 +4,7 @@ OpenCodePod is a lightweight, stateless Go server that turns Docker containers i
 
 ## Features
 
-- **Project Workspaces** — Each project gets its own isolated Docker container.
+- **Project Workspaces** — Each project gets its own Docker container and persistent volume.
 - **Web UI** — Dark-themed dashboard at `/` for managing projects without touching the CLI.
 - **REST API** — Full JSON API for automation and integrations.
 - **SSH & Web Access** — Containers expose `22/tcp` (SSH) and `8080/tcp` (web app); Docker assigns random host ports automatically.
@@ -122,6 +122,7 @@ Response:
     "status": "running",
     "ssh_port": 49152,
     "web_port": 49153,
+    "volume": "cp-vol-a1b2c3d4",
     "image": "ghcr.io/ducng99/opencodepod-client:latest"
   }
 ]
@@ -166,7 +167,7 @@ POST /api/projects/{id}/stop
 DELETE /api/projects/{id}
 ```
 
-Deletes the container. This cannot be undone.
+Deletes the container **and** its persistent volume. This cannot be undone.
 
 ### Refresh ports
 
@@ -195,8 +196,9 @@ docker run -d \
 ## How It Works
 
 - **No database** — Project state is stored entirely in Docker labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.).
-- **Naming** — Containers are named `cp-<id>`.
+- **Naming** — Containers are named `cp-<id>`, volumes `cp-vol-<id>`.
 - **Port assignment** — Docker randomly assigns host ports for `22/tcp` and `8080/tcp`. CodePod inspects the container after start to discover them.
+- **Volumes** — Each project gets a dedicated Docker volume mounted at `/workspaces` inside the container.
 - **Restart policy** — Unless stopped via the API, containers use Docker's `unless-stopped` restart policy.
 
 ## Development
@@ -227,7 +229,7 @@ opencodepod/
 go test ./internal/ -v -count=1 -timeout 5m
 ```
 
-Integration tests use `nginx:alpine` as a test image and create real containers, cleaning them up afterward.
+Integration tests use `nginx:alpine` as a test image and create real containers/volumes, cleaning them up afterward.
 
 ## License
 

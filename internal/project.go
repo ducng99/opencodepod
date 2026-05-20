@@ -22,6 +22,7 @@ type Project struct {
 	Status  string `json:"status"`
 	SSHPort int    `json:"ssh_port"`
 	WebPort int    `json:"web_port"`
+	Volume  string `json:"volume"`
 	Image   string `json:"image"`
 }
 
@@ -47,7 +48,12 @@ func ProjectFromLabels(id string, labels map[string]string) *Project {
 		Name:    labels[LabelName],
 		GitRepo: labels[LabelGitRepo],
 		Image:   labels[LabelImage],
+		Volume:  VolumeName(id),
 	}
+}
+
+func VolumeName(id string) string {
+	return fmt.Sprintf("cp-vol-%s", id)
 }
 
 func ContainerName(id string) string {

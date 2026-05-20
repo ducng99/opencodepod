@@ -84,8 +84,24 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		Name:    req.Name,
 		GitRepo: req.GitRepo,
 		Image:   image,
+		Volume:  VolumeName(id),
 		Status:  "creating",
 	}
+
+	// Create volume
+	volResult, err := dm.client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
+		Name:   p.Volume,
+		Driver: "local",
+		Labels: map[string]string{
+			LabelManaged:   "true",
+			LabelProjectID: id,
+			LabelName:      req.Name,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("volume create: %w", err)
+	}
+	_ = volResult.Volume.Name
 
 	// Try to pull the latest image; if that fails, fall back to a locally cached copy.
 	pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
@@ -94,6 +110,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		_ = pr.Close()
 	} else {
 		if _, inspectErr := dm.client.ImageInspect(ctx, image); inspectErr != nil {
+			_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
 			return nil, fmt.Errorf("image pull failed and no local image found: %w", err)
 		}
 	}
@@ -131,7 +148,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		Env:          env,
 	}
 
-	var binds []string
+	binds := []string{fmt.Sprintf("%s:/workspaces", p.Volume)}
 	for _, m := range dm.cfg.Mounts {
 		if m.Source == "" || m.Target == "" {
 			continue
@@ -158,6 +175,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		Name:       ContainerName(id),
 	})
 	if err != nil {
+		_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
@@ -171,6 +189,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 
 	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
 		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+		_, _ = dm.client.VolumeRemove(ctx, p.Volume, dockerclient.VolumeRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container start: %w", err)
 	}
 
@@ -230,6 +249,12 @@ func (dm *DockerManager) DeleteProject(ctx context.Context, id string) error {
 	for _, c := range result.Items {
 		if _, err := dm.client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("remove container: %w", err)
+		}
+	}
+	if _, err := dm.client.VolumeRemove(ctx, VolumeName(id), dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+		// Volume may already be removed with container
+		if !errors.Is(err, errdefs.ErrNotFound) {
+			return fmt.Errorf("remove volume: %w", err)
 		}
 	}
 	return nil
