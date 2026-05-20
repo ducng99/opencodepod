@@ -4,7 +4,7 @@ Stateless Go orchestrator that manages Docker containers as isolated project wor
 
 ## Architecture
 
-- **Entry**: `cmd/server/main.go` — boots HTTP server on `APP_LISTEN` (default `:8080`)
+- **Entry**: `cmd/server/main.go` — boots HTTP server on `listen_addr` (default `:8080`)
 - **Packages**:
     - `internal/` — all business logic (handlers, docker client, config, domain types)
     - `frontend/` — static UI served via `//go:embed all:dist`
@@ -40,7 +40,7 @@ go test ./internal/ -v -count=1 -timeout 5m
 - **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
-- **Config**: all env-driven (`APP_LISTEN`, `DEFAULT_IMAGE`, `APP_SSH_PUBLIC_KEY`, `OPENCODE_CONFIG_PATH`, `OPENCODE_CONFIG_TARGET`)
+- **Config**: loaded from `config.json` with JSON keys in snake_case (`listen_addr`, `default_image`, `ssh_public_key`, `opencode_config_path`, `opencode_config_target`). Missing fields fall back to hard-coded defaults.
 
 ## Frontend
 

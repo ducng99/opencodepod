@@ -1,31 +1,42 @@
 package internal
 
 import (
+	"encoding/json"
 	"os"
 )
 
 type Config struct {
-	ListenAddr           string
-	DefaultImage         string
-	SSHPublicKey         string
-	OpenCodeConfigPath   string
-	OpenCodeConfigTarget string
+	ListenAddr           string `json:"listen_addr"`
+	DefaultImage         string `json:"default_image"`
+	SSHPublicKey         string `json:"ssh_public_key"`
+	OpenCodeConfigPath   string `json:"opencode_config_path"`
+	OpenCodeConfigTarget string `json:"opencode_config_target"`
 }
 
+const defaultConfigPath = "config.json"
+
 func LoadConfig() *Config {
-	cfg := &Config{
-		ListenAddr:           getEnv("APP_LISTEN", ":8080"),
-		DefaultImage:         getEnv("DEFAULT_IMAGE", "ghcr.io/ducng99/opencodepod-client:latest"),
-		SSHPublicKey:         getEnv("APP_SSH_PUBLIC_KEY", ""),
-		OpenCodeConfigPath:   getEnv("OPENCODE_CONFIG_PATH", ""),
-		OpenCodeConfigTarget: getEnv("OPENCODE_CONFIG_TARGET", ""),
-	}
+	cfg, _ := loadConfigFrom(defaultConfigPath)
 	return cfg
 }
 
-func getEnv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func loadConfigFrom(path string) (*Config, error) {
+	cfg := &Config{
+		ListenAddr:           ":8080",
+		DefaultImage:         "ghcr.io/ducng99/opencodepod-client:latest",
+		SSHPublicKey:         "",
+		OpenCodeConfigPath:   "",
+		OpenCodeConfigTarget: "",
 	}
-	return def
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal(data, cfg); err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
 }
