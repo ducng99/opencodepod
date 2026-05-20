@@ -1,16 +1,25 @@
 #!/bin/sh
 set -e
 
-WORKSPACE="/workspace"
+WORKSPACE="/workspaces"
+
+# Configure Git SSH key if present
+if [ -f /home/coder/.ssh/id_ed25519 ]; then
+  sudo chown coder:coder /home/coder/.ssh/id_ed25519
+  sudo chmod 600 /home/coder/.ssh/id_ed25519
+  export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -i /home/coder/.ssh/id_ed25519"
+  echo "Git SSH key configured."
+fi
 
 if [ -n "$GIT_REPO" ]; then
-  cd "$WORKSPACE"
-  if [ ! -d ".git" ]; then
-    echo "Cloning $GIT_REPO into $WORKSPACE ..."
-    git clone "$GIT_REPO" .
+  REPO_NAME=$(basename "$GIT_REPO" .git)
+  REPO_DIR="$WORKSPACE/$REPO_NAME"
+  if [ ! -d "$REPO_DIR/.git" ]; then
+    echo "Cloning $GIT_REPO into $REPO_DIR ..."
+    git clone "$GIT_REPO" "$REPO_DIR"
     echo "Clone complete."
   else
-    echo "Workspace already initialised, skipping clone."
+    echo "$REPO_NAME already cloned, skipping clone."
   fi
 fi
 
@@ -24,6 +33,7 @@ if [ -n "$SSH_PUBLIC_KEY" ]; then
     echo "SSH public key installed."
   fi
 
+  sudo chown -R coder:coder /home/coder/.ssh
   chmod 700 /home/coder/.ssh
   chmod 600 "$AUTH_KEYS"
 fi

@@ -74,10 +74,6 @@ func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 			t.Errorf("cleanup container remove failed: %v", err)
 		}
 	}
-	// Remove volume
-	if _, err := dm.client.VolumeRemove(ctx, VolumeName(id), dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
-		t.Errorf("cleanup volume remove failed: %v", err)
-	}
 }
 
 func TestDockerManager_ListProjects(t *testing.T) {
@@ -128,9 +124,6 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if p.Name != "test-create" {
 		t.Errorf("expected name test-create, got %s", p.Name)
 	}
-	if p.Volume != VolumeName(p.ID) {
-		t.Errorf("expected volume %s, got %s", VolumeName(p.ID), p.Volume)
-	}
 	if p.Status == "" {
 		t.Error("expected non-empty status")
 	}
@@ -139,16 +132,6 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	}
 	if p.WebPort == 0 {
 		t.Error("expected a host port assigned for web")
-	}
-
-	// Verify volume exists
-	volResult, err := dm.client.VolumeInspect(ctx, p.Volume, dockerclient.VolumeInspectOptions{})
-	if err != nil {
-		t.Fatalf("volume inspect failed: %v", err)
-	}
-	vol := volResult.Volume
-	if vol.Name != p.Volume {
-		t.Errorf("expected volume name %s, got %s", p.Volume, vol.Name)
 	}
 
 	// Verify container exists with correct labels
@@ -258,11 +241,6 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 	if len(result.Items) > 0 {
 		t.Errorf("expected 0 containers after delete, got %d", len(result.Items))
 	}
-
-	_, err = dm.client.VolumeInspect(ctx, VolumeName(id), dockerclient.VolumeInspectOptions{})
-	if err == nil {
-		t.Error("expected volume to be removed")
-	}
 }
 
 func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
@@ -311,6 +289,68 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected env var %q not found in container env %v", expected, inspect.Config.Env)
+	}
+}
+
+func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
+	ctx := context.Background()
+
+	expectedKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI testkey"
+	cfgWithKey := &Config{
+		ListenAddr:   ":8080",
+		DefaultImage: testImage,
+		Git: GitConfig{
+			Auth: GitAuthConfig{
+				SSHKey:     expectedKey,
+				SSHKeyPath: "/tmp/git_ssh_key",
+			},
+		},
+	}
+	dm, err := NewDockerManager(cfgWithKey)
+	if err != nil {
+		t.Skipf("docker client unavailable: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dm.Close()
+	})
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+
+	req := &CreateRequest{Name: "test-git-ssh-key"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	// Verify the key file exists inside the container.
+	execCreateResult, err := dm.client.ExecCreate(ctx, ContainerName(p.ID), dockerclient.ExecCreateOptions{
+		AttachStdout: true,
+		TTY:          true,
+		Cmd:          []string{"cat", cfgWithKey.Git.Auth.SSHKeyPath},
+	})
+	if err != nil {
+		t.Fatalf("container exec create failed: %v", err)
+	}
+
+	attachResult, err := dm.client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	if err != nil {
+		t.Fatalf("container exec attach failed: %v", err)
+	}
+	defer attachResult.Close()
+
+	data, err := io.ReadAll(attachResult.Reader)
+	if err != nil {
+		t.Fatalf("read exec output failed: %v", err)
+	}
+
+	got := strings.TrimSpace(string(data))
+	if got != expectedKey {
+		t.Errorf("expected key file content %q, got %q", expectedKey, got)
 	}
 }
 

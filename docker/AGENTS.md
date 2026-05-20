@@ -8,7 +8,7 @@ This is the isolated Docker workspace for a coding agent. You have full sudo acc
 - **User**: `coder` (UID auto-assigned, home `/home/coder`)
 - **Sudo**: passwordless — `sudo apt-get install ...` works without prompts
 - **Shell**: Bash
-- **Workspace**: `/workspace` (owned by `coder`)
+- **Workspace**: `/workspaces` (owned by `coder`)
 
 ## Pre-installed Tools
 
@@ -23,12 +23,13 @@ Core build/runtime stack:
 
 - Install any packages with `apt-get` (use `sudo`)
 - Create virtualenvs, install pip/npm packages, clone repos, compile code
-- Write to `/workspace` or anywhere writable by `coder`
+- Write to `/workspaces` or anywhere writable by `coder`
 - Use `sudo` for system-level changes (installing system libs, services, etc.)
 
 ## Conventions
 
-- Keep project files under `/workspace` when possible
+- Keep project files under `/workspaces` when possible
 - If you need a specific language version (e.g., newer Node or Python), install it inside the container rather than modifying the base image
 - The host binds random external ports for SSH and the web UI; you don't need to know them unless you are debugging networking
 - SSH access is configured automatically if the host sets `SSH_PUBLIC_KEY` — the key is written to `~coder/.ssh/authorized_keys` on container start
+- Git SSH key is copied into the container at `/home/coder/.ssh/id_ed25519` before startup when `git.auth.ssh_key` is configured on the host. The entrypoint fixes ownership and sets `GIT_SSH_COMMAND` for `git clone`.

@@ -232,7 +232,7 @@ func TestHandleDelete(t *testing.T) {
 	}
 }
 
-// cleanupOrphaned removes any test containers/volumes left over from prior runs
+// cleanupOrphaned removes any test containers left over from prior runs
 // that match our test naming patterns.
 func cleanupOrphaned(t *testing.T, dm *DockerManager) {
 	t.Helper()

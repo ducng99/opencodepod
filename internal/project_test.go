@@ -49,15 +49,6 @@ func TestProjectFromLabels(t *testing.T) {
 	if p.Image != "img:v2" {
 		t.Errorf("expected image img:v2, got %s", p.Image)
 	}
-	if p.Volume != VolumeName("xyz789") {
-		t.Errorf("expected volume %s, got %s", VolumeName("xyz789"), p.Volume)
-	}
-}
-
-func TestVolumeName(t *testing.T) {
-	if VolumeName("abc") != "cp-vol-abc" {
-		t.Errorf("expected cp-vol-abc, got %s", VolumeName("abc"))
-	}
 }
 
 func TestContainerName(t *testing.T) {
