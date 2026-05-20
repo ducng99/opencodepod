@@ -14,7 +14,10 @@ import (
 )
 
 func main() {
-	cfg := internal.LoadConfig()
+	cfg, err := internal.LoadConfig()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
 
 	docker, err := internal.NewDockerManager(cfg)
 	if err != nil {

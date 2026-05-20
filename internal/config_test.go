@@ -95,3 +95,141 @@ func TestLoadConfigJSONPartial(t *testing.T) {
 		t.Errorf("expected DefaultImage default, got '%s'", cfg.DefaultImage)
 	}
 }
+
+func TestLoadConfigPlaceholderHappyPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	keyPath := filepath.Join(dir, "ssh_key.txt")
+
+	if err := os.WriteFile(keyPath, []byte("key-from-file"), 0644); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
+
+	content := `{
+		"ssh_public_key": "{file:ssh_key.txt}"
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SSHPublicKey != "key-from-file" {
+		t.Errorf("expected SSHPublicKey 'key-from-file', got '%s'", cfg.SSHPublicKey)
+	}
+}
+
+func TestLoadConfigPlaceholderMissingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	content := `{
+		"ssh_public_key": "{file:missing_key.txt}"
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	_, err := loadConfigFrom(path)
+	if err == nil {
+		t.Fatal("expected error for missing file, got nil")
+	}
+}
+
+func TestLoadConfigPlaceholderNestedStruct(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	keyPath := filepath.Join(dir, "git_key.txt")
+
+	if err := os.WriteFile(keyPath, []byte("git-key-content"), 0644); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
+
+	content := `{
+		"git": {
+			"auth": {
+				"ssh_key": "{file:git_key.txt}"
+			}
+		}
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Git.Auth.SSHKey != "git-key-content" {
+		t.Errorf("expected Git.Auth.SSHKey 'git-key-content', got '%s'", cfg.Git.Auth.SSHKey)
+	}
+}
+
+func TestLoadConfigPlaceholderSlice(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	mountSourcePath := filepath.Join(dir, "mount_source.txt")
+
+	if err := os.WriteFile(mountSourcePath, []byte("/host/path"), 0644); err != nil {
+		t.Fatalf("write mount source file: %v", err)
+	}
+
+	content := `{
+		"mounts": [
+			{"source": "{file:mount_source.txt}", "target": "/container/path"}
+		]
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Mounts) != 1 {
+		t.Fatalf("expected 1 mount, got %d", len(cfg.Mounts))
+	}
+	if cfg.Mounts[0].Source != "/host/path" {
+		t.Errorf("expected mount source '/host/path', got '%s'", cfg.Mounts[0].Source)
+	}
+	if cfg.Mounts[0].Target != "/container/path" {
+		t.Errorf("expected mount target '/container/path', got '%s'", cfg.Mounts[0].Target)
+	}
+}
+
+func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	keyPath := filepath.Join(dir, "ssh_key.txt")
+
+	if err := os.WriteFile(keyPath, []byte("abs-path-key"), 0644); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
+
+	content := `{
+		"ssh_public_key": "{file:` + filepath.ToSlash(keyPath) + `}"
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SSHPublicKey != "abs-path-key" {
+		t.Errorf("expected SSHPublicKey 'abs-path-key', got '%s'", cfg.SSHPublicKey)
+	}
+}

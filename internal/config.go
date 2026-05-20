@@ -3,6 +3,9 @@ package internal
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
 )
 
 type Mount struct {
@@ -30,9 +33,10 @@ type Config struct {
 
 const defaultConfigPath = "config.json"
 
-func LoadConfig() *Config {
-	cfg, _ := loadConfigFrom(defaultConfigPath)
-	return cfg
+var filePlaceholderRe = regexp.MustCompile(`^\{file:(.+)\}$`)
+
+func LoadConfig() (*Config, error) {
+	return loadConfigFrom(defaultConfigPath)
 }
 
 func loadConfigFrom(path string) (*Config, error) {
@@ -57,5 +61,55 @@ func loadConfigFrom(path string) (*Config, error) {
 		return cfg, err
 	}
 
+	configDir := filepath.Dir(path)
+	if err := expandPlaceholders(cfg, configDir); err != nil {
+		return cfg, err
+	}
+
 	return cfg, nil
+}
+
+func expandPlaceholders(v interface{}, configDir string) error {
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	return expandValue(rv, configDir)
+}
+
+func expandValue(v reflect.Value, configDir string) error {
+	switch v.Kind() {
+	case reflect.String:
+		s := v.String()
+		if m := filePlaceholderRe.FindStringSubmatch(s); m != nil {
+			filePath := m[1]
+			if !filepath.IsAbs(filePath) {
+				filePath = filepath.Join(configDir, filePath)
+			}
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+			v.SetString(string(content))
+		}
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if err := expandValue(v.Field(i), configDir); err != nil {
+				return err
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if err := expandValue(v.Index(i), configDir); err != nil {
+				return err
+			}
+		}
+	case reflect.Ptr:
+		if !v.IsNil() {
+			if err := expandValue(v.Elem(), configDir); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
