@@ -3,7 +3,7 @@ set -e
 
 WORKSPACE="/workspaces"
 
-eval "$(ssh-agent -s)"
+systemctl --user enable --now ssh-agent 2>/dev/null || true
 opencode upgrade || true
 
 # Configure Git SSH key if present

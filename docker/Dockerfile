@@ -62,22 +62,38 @@ RUN useradd -m -s /bin/bash coder \
 RUN mkdir -p /workspaces /home/coder/.ssh \
     && chown -R coder:coder /home/coder /workspaces
 
-# Write SSH client config for GitHub / GitLab
-RUN { \
-    echo "Host github.com gitlab.com"; \
-    echo "    IdentityFile ~/.ssh/id_ed25519"; \
-    echo "    IdentitiesOnly yes"; \
-    echo "    StrictHostKeyChecking accept-new"; \
-    echo "    AddKeysToAgent yes"; \
-} > /home/coder/.ssh/config \
-    && chown coder:coder /home/coder/.ssh/config \
-    && chmod 600 /home/coder/.ssh/config
-
 # Install opencode as user 'coder'
 USER coder
 ENV PATH="/home/coder/.opencode/bin:${PATH}"
 RUN curl -fsSL https://opencode.ai/install | bash
-COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.jsonc
+
+# Write SSH client config for GitHub / GitLab
+RUN mkdir -p ~/.ssh \
+    && { \
+    echo "Host github.com gitlab.com"; \
+    echo "    IdentityFile ~/.ssh/id_ed25519"; \
+    echo "    StrictHostKeyChecking accept-new"; \
+    echo "    AddKeysToAgent yes"; \
+    } > ~/.ssh/config \
+    && chmod 600 ~/.ssh/config
+
+# Create systemd user service for ssh-agent
+RUN mkdir -p ~/.config/systemd/user \
+    && { \
+        echo "[Unit]"; \
+        echo "Description=SSH key agent"; \
+        echo ""; \
+        echo "[Service]"; \
+        echo "Type=simple"; \
+        echo "Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket"; \
+        echo "ExecStart=/usr/bin/ssh-agent -D -a \$SSH_AUTH_SOCK"; \
+        echo ""; \
+        echo "[Install]"; \
+        echo "WantedBy=default.target"; \
+    } > ~/.config/systemd/user/ssh-agent.service \
+    && chmod 644 ~/.config/systemd/user/ssh-agent.service
+
+COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
 
 COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 
