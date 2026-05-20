@@ -140,6 +140,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	hostConfig := &container.HostConfig{
 		PortBindings: portBindings,
 		Binds:        binds,
+		ExtraHosts:   []string{"host.docker.internal:host-gateway"},
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},

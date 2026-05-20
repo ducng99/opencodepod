@@ -11,6 +11,7 @@ OpenCodePod is a lightweight, stateless Go server that turns Docker containers i
 - **Git Clone on Boot** — Pass a `git_repo` and the container receives it via the `GIT_REPO` environment variable.
 - **SSH Public Key Injection** — Configure a global SSH public key in `config.json`.
 - **Extra Mounts** — Mount host files or directories into every project container via JSON config.
+- **Host Gateway Access** — Every container gets `host.docker.internal` mapped to the host gateway, enabling access to host services.
 - **Stateless** — Server restart? No problem. State is reconstructed by querying Docker on every request.
 
 ## Prerequisites
