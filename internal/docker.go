@@ -140,12 +140,15 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 
 	binds := []string{fmt.Sprintf("%s:/workspace", p.Volume)}
-	if dm.cfg.OpenCodeConfigPath != "" {
-		target := dm.cfg.OpenCodeConfigTarget
-		if target == "" {
-			target = "/etc/opencode-config.jsonc"
+	for _, m := range dm.cfg.Mounts {
+		if m.Source == "" || m.Target == "" {
+			continue
 		}
-		binds = append(binds, fmt.Sprintf("%s:%s:ro", dm.cfg.OpenCodeConfigPath, target))
+		mode := "ro"
+		if !m.ReadOnly {
+			mode = "rw"
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, mode))
 	}
 
 	hostConfig := &container.HostConfig{

@@ -5,12 +5,17 @@ import (
 	"os"
 )
 
+type Mount struct {
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"read_only"`
+}
+
 type Config struct {
-	ListenAddr           string `json:"listen_addr"`
-	DefaultImage         string `json:"default_image"`
-	SSHPublicKey         string `json:"ssh_public_key"`
-	OpenCodeConfigPath   string `json:"opencode_config_path"`
-	OpenCodeConfigTarget string `json:"opencode_config_target"`
+	ListenAddr   string  `json:"listen_addr"`
+	DefaultImage string  `json:"default_image"`
+	SSHPublicKey string  `json:"ssh_public_key"`
+	Mounts       []Mount `json:"mounts"`
 }
 
 const defaultConfigPath = "config.json"
@@ -22,11 +27,10 @@ func LoadConfig() *Config {
 
 func loadConfigFrom(path string) (*Config, error) {
 	cfg := &Config{
-		ListenAddr:           ":8080",
-		DefaultImage:         "ghcr.io/ducng99/opencodepod-client:latest",
-		SSHPublicKey:         "",
-		OpenCodeConfigPath:   "",
-		OpenCodeConfigTarget: "",
+		ListenAddr:   ":8080",
+		DefaultImage: "ghcr.io/ducng99/opencodepod-client:latest",
+		SSHPublicKey: "",
+		Mounts:       []Mount{},
 	}
 
 	data, err := os.ReadFile(path)
