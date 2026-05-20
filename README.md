@@ -9,8 +9,8 @@ OpenCodePod is a lightweight, stateless Go server that turns Docker containers i
 - **REST API** — Full JSON API for automation and integrations.
 - **SSH & Web Access** — Containers expose `22/tcp` (SSH) and `8080/tcp` (web app); Docker assigns random host ports automatically.
 - **Git Clone on Boot** — Pass a `git_repo` and the container receives it via the `GIT_REPO` environment variable.
-- **SSH Public Key Injection** — Configure a global SSH public key via environment variable.
-- **Resource Limits** — Optionally set CPU and memory constraints for all project containers.
+- **SSH Public Key Injection** — Configure a global SSH public key in `config.json`.
+- **Extra Mounts** — Mount host files or directories into every project container via JSON config.
 - **Stateless** — Server restart? No problem. State is reconstructed by querying Docker on every request.
 
 ## Prerequisites
@@ -29,31 +29,37 @@ go build -o opencodepod-server ./cmd/server
 ### Run
 
 ```bash
-./codepod-server
+./opencodepod-server
 ```
 
 The server starts on `http://localhost:8080` by default. Open your browser to `http://localhost:8080` to use the web UI.
 
 ## Configuration
 
-All configuration is environment-driven:
+Configuration is loaded from `config.json` in the working directory. Missing fields fall back to hard-coded defaults.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_LISTEN` | `:8080` | HTTP listen address |
-| `DEFAULT_IMAGE` | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
-| `APP_SSH_PUBLIC_KEY` | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
-| `OPENCODE_CONFIG_PATH` | *(empty)* | Host path to a custom `opencode.jsonc` mounted read-only into every client container |
-| `OPENCODE_CONFIG_TARGET` | *(empty)* | Container path where the config is mounted. If empty, defaults to `/etc/opencode-config.jsonc` (the default image's entrypoint copies it to `~/.config/opencode/opencode.jsonc`). Set this when using a custom image that expects the config at a specific location, e.g. `/home/ubuntu/.config/opencode/opencode.jsonc`. |
+| JSON key | Type | Default | Description |
+|----------|------|---------|-------------|
+| `listen_addr` | string | `:8080` | HTTP listen address |
+| `default_image` | string | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
+| `ssh_public_key` | string | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
+| `mounts` | array | `[]` | Extra host → container mounts applied to every project. Each item has `source` (host path), `target` (container path), and optional `read_only` (boolean). |
 
-### Example with custom config
+### Example `config.json`
 
-```bash
-export APP_LISTEN=:3000
-export DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest
-export APP_SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3NzaC..."
-export OPENCODE_CONFIG_PATH=/host/path/to/opencode.jsonc
-./opencodepod-server
+```json
+{
+  "listen_addr": "0.0.0.0:8080",
+  "default_image": "ghcr.io/ducng99/opencodepod-client:latest",
+  "ssh_public_key": "ssh-ed25519 AAAAC3NzaC...",
+  "mounts": [
+    {
+      "source": "/host/path/to/opencode.jsonc",
+      "target": "/home/coder/.config/opencode/opencode.jsonc",
+      "read_only": true
+    }
+  ]
+}
 ```
 
 ### Docker Compose example
@@ -66,10 +72,7 @@ services:
       - 10000:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./opencode.jsonc:/app/opencode.jsonc:ro
-    environment:
-      APP_LISTEN: 0.0.0.0:8080
-      OPENCODE_CONFIG_PATH: /app/opencode.jsonc
+      - ./config.json:/app/config.json:ro
 ```
 
 ## Using the Web UI
@@ -125,7 +128,7 @@ Content-Type: application/json
 }
 ```
 
-`git_repo` and `image` are optional. If `image` is omitted, `DEFAULT_IMAGE` is used.
+`git_repo` and `image` are optional. If `image` is omitted, the configured `default_image` is used.
 
 ### Get a project
 
@@ -170,7 +173,7 @@ docker build -t opencodepod .
 docker run -d \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -e DEFAULT_IMAGE=ghcr.io/ducng99/opencodepod-client:latest \
+  -v $(pwd)/config.json:/app/config.json:ro \
   --name opencodepod \
   opencodepod
 ```
@@ -193,7 +196,7 @@ docker run -d \
 opencodepod/
 ├── cmd/server/main.go      # Entry point
 ├── internal/
-│   ├── config.go           # Environment config
+│   ├── config.go           # JSON config loader
 │   ├── docker.go           # Docker lifecycle manager
 │   ├── handlers.go         # HTTP handlers
 │   ├── project.go          # Domain types & label helpers
