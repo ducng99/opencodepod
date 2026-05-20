@@ -4,24 +4,13 @@ set -e
 WORKSPACE="/workspaces"
 
 eval "$(ssh-agent -s)"
+opencode upgrade || true
 
 # Configure Git SSH key if present
 if [ -f /home/coder/.ssh/id_ed25519 ]; then
   sudo chown coder:coder /home/coder/.ssh/id_ed25519
   sudo chmod 600 /home/coder/.ssh/id_ed25519
   echo "Git SSH key configured."
-fi
-
-if [ -n "$GIT_REPO" ]; then
-  REPO_NAME=$(basename "$GIT_REPO" .git)
-  REPO_DIR="$WORKSPACE/$REPO_NAME"
-  if [ ! -d "$REPO_DIR/.git" ]; then
-    echo "Cloning $GIT_REPO into $REPO_DIR ..."
-    git clone "$GIT_REPO" "$REPO_DIR"
-    echo "Clone complete."
-  else
-    echo "$REPO_NAME already cloned, skipping clone."
-  fi
 fi
 
 # Install the provided SSH public key for the coder user
@@ -45,6 +34,21 @@ if [ -x /usr/sbin/sshd ]; then
   echo "sshd started."
 fi
 
-opencode upgrade || true
+cd "$WORKSPACE"
+
+if [ -n "$GIT_REPO" ]; then
+  REPO_NAME=$(basename "$GIT_REPO" .git)
+  REPO_DIR="$WORKSPACE/$REPO_NAME"
+
+  if [ ! -d "$REPO_DIR/.git" ]; then
+    echo "Cloning $GIT_REPO into $REPO_DIR ..."
+    git clone "$GIT_REPO" "$REPO_DIR"
+    echo "Clone complete."
+  else
+    echo "$REPO_NAME already cloned, skipping clone."
+  fi
+
+  cd "$REPO_DIR"
+fi
 
 exec "$@"
