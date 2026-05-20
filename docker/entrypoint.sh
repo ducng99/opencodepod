@@ -14,20 +14,18 @@ if [ -n "$GIT_REPO" ]; then
   fi
 fi
 
-# If a custom opencode config was bind-mounted by the orchestrator, copy it into place.
-# Using ~ here lets this work regardless of the actual username (e.g. custom images).
-if [ -f /etc/opencode-config.jsonc ]; then
-  mkdir -p ~/.config/opencode
-  cp /etc/opencode-config.jsonc ~/.config/opencode/opencode.jsonc
-fi
-
 # Install the provided SSH public key for the coder user
 if [ -n "$SSH_PUBLIC_KEY" ]; then
   mkdir -p /home/coder/.ssh
-  echo "$SSH_PUBLIC_KEY" > /home/coder/.ssh/authorized_keys
+  AUTH_KEYS="/home/coder/.ssh/authorized_keys"
+
+  if [ ! -f "$AUTH_KEYS" ] || ! grep -qF "$SSH_PUBLIC_KEY" "$AUTH_KEYS" 2>/dev/null; then
+    echo "$SSH_PUBLIC_KEY" >> "$AUTH_KEYS"
+    echo "SSH public key installed."
+  fi
+
   chmod 700 /home/coder/.ssh
-  chmod 600 /home/coder/.ssh/authorized_keys
-  echo "SSH public key installed."
+  chmod 600 "$AUTH_KEYS"
 fi
 
 # Start the SSH daemon in the background

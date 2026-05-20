@@ -1,12 +1,16 @@
-FROM ubuntu:24.04
+FROM ubuntu:latest
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH="/usr/local/go/bin:${PATH}"
 
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     wget \
     build-essential \
+    htop \
+    tree \
+    sudo \
     python3 \
     python3-pip \
     python3-venv \
@@ -20,9 +24,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     zip \
     jq \
-    htop \
-    tree \
-    sudo
+    ripgrep
 
 # Generate SSH host keys and harden sshd config
 RUN ssh-keygen -A \
@@ -31,6 +33,24 @@ RUN ssh-keygen -A \
     && sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
     && sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config \
     && echo "AllowUsers coder" >> /etc/ssh/sshd_config
+
+# Install gh CLI
+RUN mkdir -p -m 755 /etc/apt/keyrings \
+	&& out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+	&& cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+	&& chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+	&& mkdir -p -m 755 /etc/apt/sources.list.d \
+	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+	&& apt-get update \
+	&& apt-get install gh -y
+
+# Install latest Go from official tarball
+RUN GO_VERSION=$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -n 1 | sed 's/^go//') \
+    && echo "Installing Go ${GO_VERSION}" \
+    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
+    && rm -rf /usr/local/go \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz
 
 # Create user 'coder' with home directory and passwordless sudo
 RUN useradd -m -s /bin/bash coder \
