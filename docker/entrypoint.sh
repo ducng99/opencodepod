@@ -13,6 +13,17 @@ if [ -f /home/coder/.ssh/id_ed25519 ]; then
   echo "Git SSH key configured."
 fi
 
+# Configure Git user identity if provided
+if [ -n "$GIT_USER_NAME" ]; then
+  git config --global user.name "$GIT_USER_NAME"
+  echo "Git user.name configured."
+fi
+
+if [ -n "$GIT_USER_EMAIL" ]; then
+  git config --global user.email "$GIT_USER_EMAIL"
+  echo "Git user.email configured."
+fi
+
 # Install the provided SSH public key for the coder user
 if [ -n "$SSH_PUBLIC_KEY" ]; then
   mkdir -p /home/coder/.ssh

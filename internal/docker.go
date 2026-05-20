@@ -117,6 +117,12 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	if dm.cfg.SSHPublicKey != "" {
 		env = append(env, fmt.Sprintf("SSH_PUBLIC_KEY=%s", dm.cfg.SSHPublicKey))
 	}
+	if dm.cfg.Git.UserName != "" {
+		env = append(env, fmt.Sprintf("GIT_USER_NAME=%s", dm.cfg.Git.UserName))
+	}
+	if dm.cfg.Git.UserEmail != "" {
+		env = append(env, fmt.Sprintf("GIT_USER_EMAIL=%s", dm.cfg.Git.UserEmail))
+	}
 
 	containerConfig := &container.Config{
 		Image:        image,

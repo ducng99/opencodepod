@@ -20,7 +20,9 @@ type GitAuthConfig struct {
 }
 
 type GitConfig struct {
-	Auth GitAuthConfig `json:"auth"`
+	Auth      GitAuthConfig `json:"auth"`
+	UserName  string        `json:"user_name"`
+	UserEmail string        `json:"user_email"`
 }
 
 type Config struct {
