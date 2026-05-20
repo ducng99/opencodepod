@@ -26,7 +26,7 @@ No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 ## Testing
 
 ```bash
-# Run all tests (includes Docker integration tests — need Docker daemon)
+# Run all tests
 go test ./internal/ -v -count=1 -timeout 5m
 ```
 

@@ -63,7 +63,7 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
   ],
   "git": {
     "auth": {
-      "ssh_key": "-----BEGIN OPENSSH PRIVATE KEY-----\n...",
+      "ssh_key": "{file:<host_path_to_ssh_key>}",
       "ssh_key_path": "/home/coder/.ssh/id_ed25519"
     }
   }
@@ -222,11 +222,8 @@ opencodepod/
 ### Testing
 
 ```bash
-# Run all tests (includes Docker integration tests — needs Docker daemon)
+# Run all tests
 go test ./internal/ -v -count=1 -timeout 5m
-
-# Run only unit tests (no Docker needed)
-go test ./internal/ -v -count=1 -run 'TestLabels|TestProject|TestContainer|TestParse|TestUnits|TestConfig|TestGet|TestHandleCreate_BadRequest'
 ```
 
 Integration tests use `nginx:alpine` as a test image and create real containers, cleaning them up afterward.
