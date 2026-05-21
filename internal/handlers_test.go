@@ -22,6 +22,7 @@ func setupTestServer(t *testing.T) (*Server, *DockerManager) {
 }
 
 func TestHandleList(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -66,6 +67,7 @@ func TestHandleList(t *testing.T) {
 }
 
 func TestHandleCreate(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -98,6 +100,7 @@ func TestHandleCreate(t *testing.T) {
 }
 
 func TestHandleCreate_BadRequest(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -119,6 +122,7 @@ func TestHandleCreate_BadRequest(t *testing.T) {
 }
 
 func TestHandleGet(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -160,6 +164,7 @@ func TestHandleGet(t *testing.T) {
 }
 
 func TestHandleStartStop(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -202,6 +207,7 @@ func TestHandleStartStop(t *testing.T) {
 }
 
 func TestHandleDelete(t *testing.T) {
+	t.Parallel()
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
 
@@ -242,6 +248,7 @@ func cleanupOrphaned(t *testing.T, dm *DockerManager) {
 }
 
 func TestHandleList_Empty(t *testing.T) {
+	t.Parallel()
 	// Even if there are other projects on the host, the endpoint must return 200.
 	server, dm := setupTestServer(t)
 	defer cleanupOrphaned(t, dm)
@@ -262,5 +269,63 @@ func TestHandleList_Empty(t *testing.T) {
 	// We only care that it's a valid array.
 	if projects == nil {
 		t.Error("expected non-nil slice")
+	}
+}
+
+func TestHandleUpgrade(t *testing.T) {
+	t.Parallel()
+	server, dm := setupTestServer(t)
+	defer cleanupOrphaned(t, dm)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	// Create a project first
+	reqBody, _ := json.Marshal(CreateRequest{Name: "upgrade-test"})
+	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("setup create failed: %d %s", createRec.Code, createRec.Body.String())
+	}
+	var created Project
+	_ = json.Unmarshal(createRec.Body.Bytes(), &created)
+	defer cleanupTestProject(t, dm, created.ID)
+
+	// Upgrade
+	upgradeReq := httptest.NewRequest("POST", "/api/projects/"+created.ID+"/upgrade", nil)
+	upgradeRec := httptest.NewRecorder()
+	mux.ServeHTTP(upgradeRec, upgradeReq)
+
+	if upgradeRec.Code != http.StatusOK {
+		t.Fatalf("upgrade failed: %d %s", upgradeRec.Code, upgradeRec.Body.String())
+	}
+
+	var upgraded Project
+	if err := json.Unmarshal(upgradeRec.Body.Bytes(), &upgraded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if upgraded.ID != created.ID {
+		t.Errorf("expected id %s, got %s", created.ID, upgraded.ID)
+	}
+	if upgraded.Status != "running" {
+		t.Errorf("expected running status after upgrade, got %s", upgraded.Status)
+	}
+}
+
+func TestHandleUpgrade_NotFound(t *testing.T) {
+	t.Parallel()
+	server, dm := setupTestServer(t)
+	defer cleanupOrphaned(t, dm)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	upgradeReq := httptest.NewRequest("POST", "/api/projects/nonexistent-id/upgrade", nil)
+	upgradeRec := httptest.NewRecorder()
+	mux.ServeHTTP(upgradeRec, upgradeReq)
+
+	if upgradeRec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for nonexistent project, got %d", upgradeRec.Code)
 	}
 }

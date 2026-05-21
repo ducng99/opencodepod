@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadConfigDefaults(t *testing.T) {
+	t.Parallel()
 	cfg, err := loadConfigFrom(filepath.Join(t.TempDir(), "missing.json"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -30,6 +31,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 }
 
 func TestLoadConfigFromJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
@@ -72,6 +74,7 @@ func TestLoadConfigFromJSON(t *testing.T) {
 }
 
 func TestLoadConfigJSONPartial(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
@@ -97,6 +100,7 @@ func TestLoadConfigJSONPartial(t *testing.T) {
 }
 
 func TestLoadConfigPlaceholderHappyPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "ssh_key.txt")
@@ -124,6 +128,7 @@ func TestLoadConfigPlaceholderHappyPath(t *testing.T) {
 }
 
 func TestLoadConfigPlaceholderMissingFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
@@ -142,6 +147,7 @@ func TestLoadConfigPlaceholderMissingFile(t *testing.T) {
 }
 
 func TestLoadConfigPlaceholderNestedStruct(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "git_key.txt")
@@ -173,6 +179,7 @@ func TestLoadConfigPlaceholderNestedStruct(t *testing.T) {
 }
 
 func TestLoadConfigPlaceholderSlice(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	mountSourcePath := filepath.Join(dir, "mount_source.txt")
@@ -208,6 +215,7 @@ func TestLoadConfigPlaceholderSlice(t *testing.T) {
 }
 
 func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "ssh_key.txt")
@@ -235,6 +243,7 @@ func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
 }
 
 func TestLoadConfigHosts(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
@@ -266,6 +275,7 @@ func TestLoadConfigHosts(t *testing.T) {
 }
 
 func TestLoadConfigHostsEmpty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 

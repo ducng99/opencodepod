@@ -5,6 +5,7 @@ import (
 )
 
 func TestLabelsFromProject(t *testing.T) {
+	t.Parallel()
 	p := &Project{
 		ID:      "abc123",
 		Name:    "myproject",
@@ -30,6 +31,7 @@ func TestLabelsFromProject(t *testing.T) {
 }
 
 func TestProjectFromLabels(t *testing.T) {
+	t.Parallel()
 	labels := map[string]string{
 		LabelProjectID: "xyz789",
 		LabelName:      "test",
@@ -61,24 +63,28 @@ func TestProjectFromLabels(t *testing.T) {
 }
 
 func TestVolumeName(t *testing.T) {
+	t.Parallel()
 	if VolumeName("abc") != "cp-vol-abc" {
 		t.Errorf("expected cp-vol-abc, got %s", VolumeName("abc"))
 	}
 }
 
 func TestHomeVolumeName(t *testing.T) {
+	t.Parallel()
 	if HomeVolumeName("abc") != "cp-vol-abc-home" {
 		t.Errorf("expected cp-vol-abc-home, got %s", HomeVolumeName("abc"))
 	}
 }
 
 func TestContainerName(t *testing.T) {
+	t.Parallel()
 	if ContainerName("abc") != "cp-abc" {
 		t.Errorf("expected cp-abc, got %s", ContainerName("abc"))
 	}
 }
 
 func TestParsePort(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		ports    []interface{}

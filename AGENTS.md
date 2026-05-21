@@ -27,12 +27,13 @@ No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 
 ```bash
 # Run all tests
-go test ./internal/ -v -count=1 -timeout 5m
+go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
 ```
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)
 - `skipIfNoDocker()` helper skips the entire Docker suite if daemon is unreachable
 - Tests create real containers/volumes and clean them up via `cleanupTestProject()`
+- Most tests are marked `t.Parallel()` for concurrent execution; adjust `-parallel` to match your CPU cores
 - Long timeout recommended: container pulls and start/stop cycles are slow
 
 ## Key Conventions
