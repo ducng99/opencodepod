@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+eval "$(ssh-agent -s)"
+
 WORKSPACE="/workspaces"
 
 # Ensure dirs are owned by coder
