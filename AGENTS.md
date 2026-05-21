@@ -42,6 +42,7 @@ go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
 - **Config**: loaded from `config.json` with JSON keys in snake_case (`listen_addr`, `default_image`, etc.). Missing fields fall back to hard-coded defaults.
+- **Schema**: whenever `internal/config.go` structs or their `desc` tags change, regenerate `config.schema.json` with `go run ./cmd/generate-schema`.
 - **Git auth**: `git.auth.ssh_key` (inline private key) is copied into containers via `CopyToContainer` before start, never as an env var. `git.auth.ssh_key_path` (default `/home/coder/.ssh/id_ed25519`) controls the destination inside the container.
 
 ## Frontend
