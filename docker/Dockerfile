@@ -58,11 +58,12 @@ RUN useradd -m -s /bin/bash coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder
 
+# Ensure workspace and .ssh dir exist and are owned by coder
+RUN mkdir -p /workspaces \
+    && chown -R coder:coder /workspaces
+
 # Install opencode as user 'coder'
 USER coder
-
-# Ensure workspace and .ssh dir exist and are owned by coder
-RUN mkdir -p /workspaces
 
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
