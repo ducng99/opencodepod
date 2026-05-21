@@ -56,29 +56,18 @@ export function ProjectCard({
   return (
     <div className="bg-oc-surface border border-oc-border rounded-xl p-4 flex flex-col gap-3">
       <div>
-        <h3 className="text-base font-semibold text-oc-text">
-          {project.name || "Untitled"}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-oc-text">
+            {project.name || "Untitled"}
+          </h3>
+          <Badge status={project.status} />
+        </div>
         <div className="text-xs text-oc-text-muted mt-1 flex items-center gap-2">
           <span>{project.id}</span>
           <span>•</span>
-          <span>{project.image || ""}</span>
-          <Badge status={project.status} />
+          <span className="truncate" style={{ direction: "rtl" }}>{project.image || ""}</span>
         </div>
       </div>
-
-      {project.git_repo && (
-        <div className="text-xs">
-          <a
-            href={project.git_repo}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-oc-accent hover:underline"
-          >
-            repo
-          </a>
-        </div>
-      )}
 
       <div className="text-sm space-y-1">
         {sshCmd && (
