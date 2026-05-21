@@ -3,7 +3,10 @@ set -e
 
 WORKSPACE="/workspaces"
 
-systemctl --user enable --now ssh-agent 2>/dev/null || true
+# Ensure opencode directories are owned by coder (named volumes are root-owned)
+sudo mkdir -p /home/coder/.local/share/opencode
+sudo chown -R coder:coder /home/coder/.local/share/opencode
+
 opencode upgrade || true
 
 # Configure Git SSH key if present
@@ -13,13 +16,13 @@ if [ -f /home/coder/.ssh/id_ed25519 ]; then
   echo "Git SSH key configured."
 fi
 
-# Configure Git user identity if provided
-if [ -n "$GIT_USER_NAME" ]; then
+# Configure Git user identity if provided and not already set
+if [ -n "$GIT_USER_NAME" ] && [ -z "$(git config --global user.name)" ]; then
   git config --global user.name "$GIT_USER_NAME"
   echo "Git user.name configured."
 fi
 
-if [ -n "$GIT_USER_EMAIL" ]; then
+if [ -n "$GIT_USER_EMAIL" ] && [ -z "$(git config --global user.email)" ]; then
   git config --global user.email "$GIT_USER_EMAIL"
   echo "Git user.email configured."
 fi
