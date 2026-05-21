@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "OpenCodePod server configuration schema.",
+  "properties": {
+    "default_image": {
+      "description": "Default Docker image used for new project containers.",
+      "type": "string"
+    },
+    "git": {
+      "description": "Git configuration including auth, user identity, and GPG signing.",
+      "properties": {
+        "auth": {
+          "description": "SSH authentication settings for Git operations.",
+          "properties": {
+            "ssh_key": {
+              "description": "Inline SSH private key for Git authentication.",
+              "type": "string"
+            },
+            "ssh_key_path": {
+              "description": "Container path where the SSH private key is written.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "ssh_key",
+            "ssh_key_path"
+          ],
+          "type": "object"
+        },
+        "gpg": {
+          "description": "GPG signing configuration.",
+          "properties": {
+            "key_id": {
+              "description": "GPG key ID used for commit signing.",
+              "type": "string"
+            },
+            "private_key": {
+              "description": "Inline GPG private key for signing commits.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "key_id",
+            "private_key"
+          ],
+          "type": "object"
+        },
+        "user_email": {
+          "description": "Git commit author email.",
+          "type": "string"
+        },
+        "user_name": {
+          "description": "Git commit author name.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "auth",
+        "user_name",
+        "user_email",
+        "gpg"
+      ],
+      "type": "object"
+    },
+    "hosts": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Custom host entries added to container /etc/hosts.",
+      "type": "object"
+    },
+    "listen_addr": {
+      "description": "Address and port for the HTTP server to listen on (e.g., :8080).",
+      "type": "string"
+    },
+    "mounts": {
+      "description": "Additional host paths to mount into containers.",
+      "items": {
+        "properties": {
+          "read_only": {
+            "description": "Whether the mount is read-only inside the container.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Absolute or relative host path to mount.",
+            "type": "string"
+          },
+          "target": {
+            "description": "Path inside the container where the source is mounted.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "read_only"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "ssh_public_key": {
+      "description": "Public SSH key injected into containers for coder access.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "listen_addr",
+    "default_image",
+    "ssh_public_key",
+    "mounts",
+    "hosts",
+    "git"
+  ],
+  "title": "Config",
+  "type": "object"
+}

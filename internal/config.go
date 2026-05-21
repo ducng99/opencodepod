@@ -9,35 +9,35 @@ import (
 )
 
 type Mount struct {
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	ReadOnly bool   `json:"read_only"`
+	Source   string `json:"source" desc:"Absolute or relative host path to mount."`
+	Target   string `json:"target" desc:"Path inside the container where the source is mounted."`
+	ReadOnly bool   `json:"read_only" desc:"Whether the mount is read-only inside the container."`
 }
 
 type GitAuthConfig struct {
-	SSHKey     string `json:"ssh_key"`
-	SSHKeyPath string `json:"ssh_key_path"`
+	SSHKey     string `json:"ssh_key" desc:"Inline SSH private key for Git authentication."`
+	SSHKeyPath string `json:"ssh_key_path" desc:"Container path where the SSH private key is written."`
 }
 
 type GPGConfig struct {
-	KeyID      string `json:"key_id"`
-	PrivateKey string `json:"private_key"`
+	KeyID      string `json:"key_id" desc:"GPG key ID used for commit signing."`
+	PrivateKey string `json:"private_key" desc:"Inline GPG private key for signing commits."`
 }
 
 type GitConfig struct {
-	Auth      GitAuthConfig `json:"auth"`
-	UserName  string        `json:"user_name"`
-	UserEmail string        `json:"user_email"`
-	GPG       GPGConfig     `json:"gpg"`
+	Auth      GitAuthConfig `json:"auth" desc:"SSH authentication settings for Git operations."`
+	UserName  string        `json:"user_name" desc:"Git commit author name."`
+	UserEmail string        `json:"user_email" desc:"Git commit author email."`
+	GPG       GPGConfig     `json:"gpg" desc:"GPG signing configuration."`
 }
 
 type Config struct {
-	ListenAddr   string            `json:"listen_addr"`
-	DefaultImage string            `json:"default_image"`
-	SSHPublicKey string            `json:"ssh_public_key"`
-	Mounts       []Mount           `json:"mounts"`
-	Hosts        map[string]string `json:"hosts"`
-	Git          GitConfig         `json:"git"`
+	ListenAddr   string            `json:"listen_addr" desc:"Address and port for the HTTP server to listen on (e.g., :8080)."`
+	DefaultImage string            `json:"default_image" desc:"Default Docker image used for new project containers."`
+	SSHPublicKey string            `json:"ssh_public_key" desc:"Public SSH key injected into containers for coder access."`
+	Mounts       []Mount           `json:"mounts" desc:"Additional host paths to mount into containers."`
+	Hosts        map[string]string `json:"hosts" desc:"Custom host entries added to container /etc/hosts."`
+	Git          GitConfig         `json:"git" desc:"Git configuration including auth, user identity, and GPG signing."`
 }
 
 const defaultConfigPath = "config.json"
