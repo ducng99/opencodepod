@@ -58,14 +58,14 @@ RUN useradd -m -s /bin/bash coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder
 
-# Ensure workspace and .ssh dir exist and are owned by coder
-RUN mkdir -p /workspaces /home/coder/.ssh \
-    && chown -R coder:coder /home/coder /workspaces
-
 # Install opencode as user 'coder'
 USER coder
-ENV PATH="/home/coder/.opencode/bin:${PATH}"
+
+# Ensure workspace and .ssh dir exist and are owned by coder
+RUN mkdir -p /workspaces
+
 RUN curl -fsSL https://opencode.ai/install | bash
+COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
 
 # Write SSH client config for GitHub / GitLab
 RUN mkdir -p ~/.ssh \
@@ -77,27 +77,10 @@ RUN mkdir -p ~/.ssh \
     } > ~/.ssh/config \
     && chmod 600 ~/.ssh/config
 
-# Create systemd user service for ssh-agent
-RUN mkdir -p ~/.config/systemd/user \
-    && { \
-        echo "[Unit]"; \
-        echo "Description=SSH key agent"; \
-        echo ""; \
-        echo "[Service]"; \
-        echo "Type=simple"; \
-        echo "Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket"; \
-        echo "ExecStart=/usr/bin/ssh-agent -D -a \$SSH_AUTH_SOCK"; \
-        echo ""; \
-        echo "[Install]"; \
-        echo "WantedBy=default.target"; \
-    } > ~/.config/systemd/user/ssh-agent.service \
-    && chmod 644 ~/.config/systemd/user/ssh-agent.service
-
-COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
-
 COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 
 WORKDIR /workspaces
+EXPOSE 8080
 
 ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
-CMD ["opencode", "web"]
+CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "8080", "--cors", "*"]

@@ -1,10 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "server": {
-    "hostname": "0.0.0.0",
-    "port": 8080,
-    "cors": ["*"],
-  },
   "instructions": [
     "https://raw.githubusercontent.com/ducng99/opencodepod/refs/heads/main/docker/AGENTS.md",
     ".rules",
@@ -17,6 +12,7 @@
     "build": {
       "permission": {
         "bash": {
+          "*": "ask",
           "mkdir *": "allow",
           "npm run lint*": "allow",
           "pnpm run lint*": "allow",
@@ -39,6 +35,16 @@
   },
   "permission": {
     "bash": {
+      "npm ls *": "allow",
+      "pnpm ls *": "allow",
+      "npm view *": "allow",
+      "pnpm view *": "allow",
+      "npm info *": "allow",
+      "pnpm info *": "allow",
+      "bun info *": "allow",
+      "npm explain": "allow",
+      "pnpm explain *": "allow",
+      "bun why *": "allow",
       "ls *": "allow",
       "grep *": "allow",
       "find *": "allow",
