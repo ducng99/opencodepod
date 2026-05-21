@@ -11,15 +11,18 @@ export function ProjectCard({
   project,
   onStart,
   onStop,
+  onUpgrade,
   onDelete,
 }: {
   project: Project;
   onStart: (id: string) => Promise<void>;
   onStop: (id: string) => Promise<void>;
+  onUpgrade: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const h = host();
@@ -41,6 +44,15 @@ export function ProjectCard({
       await onStop(project.id);
     } finally {
       setStopping(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    try {
+      await onUpgrade(project.id);
+    } finally {
+      setUpgrading(false);
     }
   };
 
@@ -108,6 +120,13 @@ export function ProjectCard({
             Stop
           </LoadingButton>
         )}
+        <LoadingButton
+          onClick={handleUpgrade}
+          loading={upgrading}
+          className="px-3 py-1.5 bg-oc-accent hover:bg-oc-accent-hover text-white text-xs font-medium rounded-md transition-colors"
+        >
+          Upgrade
+        </LoadingButton>
         <LoadingButton
           onClick={handleDelete}
           loading={deleting}

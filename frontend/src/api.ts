@@ -30,6 +30,10 @@ export function stopProject(id: string) {
   return api<Project>(`/projects/${id}/stop`, { method: "POST" });
 }
 
+export function upgradeProject(id: string) {
+  return api<Project>(`/projects/${id}/upgrade`, { method: "POST" });
+}
+
 export function deleteProject(id: string) {
   return api<void>(`/projects/${id}`, { method: "DELETE" });
 }

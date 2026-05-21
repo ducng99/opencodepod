@@ -6,6 +6,7 @@ import {
   startProject,
   stopProject,
   deleteProject,
+  upgradeProject,
 } from "./api";
 import { Header } from "./components/Header";
 import { Toolbar } from "./components/Toolbar";
@@ -53,6 +54,12 @@ export function App() {
     await refresh();
   };
 
+  const handleUpgrade = async (id: string) => {
+    if (!confirm("Upgrade will pull the latest image and recreate the container. Only /workspaces will be kept; all other data will be removed. Continue?")) return;
+    await upgradeProject(id);
+    await refresh();
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Delete project and its volume? This cannot be undone.")) return;
     await deleteProject(id);
@@ -74,6 +81,7 @@ export function App() {
                 project={p}
                 onStart={handleStart}
                 onStop={handleStop}
+                onUpgrade={handleUpgrade}
                 onDelete={handleDelete}
               />
             ))}

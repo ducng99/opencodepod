@@ -22,6 +22,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/projects/{id}", s.handleGet)
 	mux.HandleFunc("POST /api/projects/{id}/start", s.handleStart)
 	mux.HandleFunc("POST /api/projects/{id}/stop", s.handleStop)
+	mux.HandleFunc("POST /api/projects/{id}/upgrade", s.handleUpgrade)
 	mux.HandleFunc("DELETE /api/projects/{id}", s.handleDelete)
 }
 
@@ -75,6 +76,16 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	project, err := s.docker.StopProject(r.Context(), id)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, project)
+}
+
+func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	project, err := s.docker.UpgradeProject(r.Context(), id)
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, err)
 		return
