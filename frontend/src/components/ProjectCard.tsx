@@ -66,14 +66,14 @@ export function ProjectCard({
   };
 
   return (
-    <div className="bg-oc-surface border border-oc-border rounded-xl p-4 flex flex-col gap-3">
+    <div className="bg-oc-surface border border-oc-border rounded-xl p-4 flex flex-col gap-3 relative">
+      <div className="absolute top-3 right-4">
+        <Badge status={project.status} />
+      </div>
       <div>
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-oc-text">
-            {project.name || "Untitled"}
-          </h3>
-          <Badge status={project.status} />
-        </div>
+        <h3 className="text-base font-semibold text-oc-text pr-20">
+          {project.name || "Untitled"}
+        </h3>
         <div className="text-xs text-oc-text-muted mt-1 flex items-center gap-2">
           <span>{project.id}</span>
           <span>•</span>
