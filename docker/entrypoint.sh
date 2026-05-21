@@ -3,9 +3,8 @@ set -e
 
 WORKSPACE="/workspaces"
 
-# Ensure opencode directories are owned by coder (named volumes are root-owned)
-sudo mkdir -p /home/coder/.local/share/opencode
-sudo chown -R coder:coder /home/coder/.local/share/opencode
+# Ensure home is owned by coder
+sudo chown -R coder:coder /home/coder
 
 opencode upgrade || true
 
