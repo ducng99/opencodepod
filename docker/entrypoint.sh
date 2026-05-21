@@ -3,8 +3,8 @@ set -e
 
 WORKSPACE="/workspaces"
 
-# Ensure home is owned by coder
-sudo chown -R coder:coder /home/coder
+# Ensure dirs are owned by coder
+sudo chown coder:coder /home/coder/.local /home/coder/.local/share /home/coder/.local/share/opencode
 
 opencode upgrade || true
 
