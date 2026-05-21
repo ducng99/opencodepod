@@ -45,6 +45,15 @@ if [ -f /home/coder/.gnupg/private.key ]; then
   fi
 fi
 
+# Configure Git HTTP credentials if provided
+if [ -f /home/coder/.git-credentials ]; then
+  chmod 600 /home/coder/.git-credentials
+  if [ -z "$(git config --global credential.helper)" ]; then
+    git config --global credential.helper store
+    echo "Git credential helper configured."
+  fi
+fi
+
 # Install the provided SSH public key for the coder user
 if [ -n "$SSH_PUBLIC_KEY" ]; then
   mkdir -p /home/coder/.ssh

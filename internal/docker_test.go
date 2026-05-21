@@ -397,6 +397,74 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 	}
 }
 
+func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	expectedContent := "https://myuser:ghp_xxx@github.com\n"
+	cfgWithCreds := &Config{
+		ListenAddr:   ":8080",
+		DefaultImage: testImage,
+		Git: GitConfig{
+			Auth: GitAuthConfig{
+				Credentials: map[string]GitCredential{
+					"github.com": {
+						Username: "myuser",
+						Password: "ghp_xxx",
+					},
+				},
+			},
+		},
+	}
+	dm, err := NewDockerManager(cfgWithCreds)
+	if err != nil {
+		t.Skipf("docker client unavailable: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dm.Close()
+	})
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+		t.Skipf("docker daemon unreachable: %v", err)
+	}
+
+	req := &CreateRequest{Name: "test-git-credentials"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	// Verify the credentials file exists inside the container.
+	execCreateResult, err := dm.client.ExecCreate(ctx, ContainerName(p.ID), dockerclient.ExecCreateOptions{
+		AttachStdout: true,
+		TTY:          true,
+		Cmd:          []string{"cat", "/home/coder/.git-credentials"},
+	})
+	if err != nil {
+		t.Fatalf("container exec create failed: %v", err)
+	}
+
+	attachResult, err := dm.client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	if err != nil {
+		t.Fatalf("container exec attach failed: %v", err)
+	}
+	defer attachResult.Close()
+
+	data, err := io.ReadAll(attachResult.Reader)
+	if err != nil {
+		t.Fatalf("read exec output failed: %v", err)
+	}
+
+	got := strings.TrimSpace(string(data))
+	expected := strings.TrimSpace(expectedContent)
+	if got != expected {
+		t.Errorf("expected credentials file content %q, got %q", expected, got)
+	}
+}
+
 func TestDockerManager_containerToProject(t *testing.T) {
 	t.Parallel()
 	dm := skipIfNoDocker(t)

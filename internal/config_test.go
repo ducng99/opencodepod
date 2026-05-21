@@ -28,6 +28,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.Git.Auth.SSHKeyPath != "/home/coder/.ssh/id_ed25519" {
 		t.Errorf("expected Git.Auth.SSHKeyPath '/home/coder/.ssh/id_ed25519', got '%s'", cfg.Git.Auth.SSHKeyPath)
 	}
+	if cfg.Git.Auth.Credentials != nil {
+		t.Errorf("expected Git.Auth.Credentials nil, got %v", cfg.Git.Auth.Credentials)
+	}
 }
 
 func TestLoadConfigFromJSON(t *testing.T) {
@@ -293,5 +296,61 @@ func TestLoadConfigHostsEmpty(t *testing.T) {
 	// Hosts should be nil when not specified in JSON
 	if cfg.Hosts != nil {
 		t.Errorf("expected Hosts to be nil when not specified, got %v", cfg.Hosts)
+	}
+}
+
+func TestLoadConfigCredentials(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	content := `{
+		"git": {
+			"auth": {
+				"credentials": {
+					"github.com": {
+						"username": "myuser",
+						"password": "ghp_xxx"
+					},
+					"gitlab.com": {
+						"username": "otheruser",
+						"password": "glpat_xxx"
+					}
+				}
+			}
+		}
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Git.Auth.Credentials) != 2 {
+		t.Fatalf("expected 2 credentials, got %d", len(cfg.Git.Auth.Credentials))
+	}
+	gh, ok := cfg.Git.Auth.Credentials["github.com"]
+	if !ok {
+		t.Fatal("expected github.com credential")
+	}
+	if gh.Username != "myuser" {
+		t.Errorf("expected github.com username 'myuser', got '%s'", gh.Username)
+	}
+	if gh.Password != "ghp_xxx" {
+		t.Errorf("expected github.com password 'ghp_xxx', got '%s'", gh.Password)
+	}
+	gl, ok := cfg.Git.Auth.Credentials["gitlab.com"]
+	if !ok {
+		t.Fatal("expected gitlab.com credential")
+	}
+	if gl.Username != "otheruser" {
+		t.Errorf("expected gitlab.com username 'otheruser', got '%s'", gl.Username)
+	}
+	if gl.Password != "glpat_xxx" {
+		t.Errorf("expected gitlab.com password 'glpat_xxx', got '%s'", gl.Password)
 	}
 }

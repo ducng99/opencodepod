@@ -14,9 +14,15 @@ type Mount struct {
 	ReadOnly bool   `json:"read_only" desc:"Whether the mount is read-only inside the container."`
 }
 
+type GitCredential struct {
+	Username string `json:"username" desc:"Username for Git HTTP authentication."`
+	Password string `json:"password" desc:"Password or PAT for Git HTTP authentication."`
+}
+
 type GitAuthConfig struct {
-	SSHKey     string `json:"ssh_key" desc:"Inline SSH private key for Git authentication."`
-	SSHKeyPath string `json:"ssh_key_path" desc:"Container path where the SSH private key is written."`
+	SSHKey      string                     `json:"ssh_key" desc:"Inline SSH private key for Git authentication."`
+	SSHKeyPath  string                     `json:"ssh_key_path" desc:"Container path where the SSH private key is written."`
+	Credentials map[string]GitCredential `json:"credentials" desc:"Host-keyed username/password credentials for Git HTTP authentication."`
 }
 
 type GPGConfig struct {

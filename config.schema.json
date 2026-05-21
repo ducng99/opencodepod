@@ -12,6 +12,27 @@
         "auth": {
           "description": "SSH authentication settings for Git operations.",
           "properties": {
+            "credentials": {
+              "additionalProperties": {
+                "properties": {
+                  "password": {
+                    "description": "Password or PAT for Git HTTP authentication.",
+                    "type": "string"
+                  },
+                  "username": {
+                    "description": "Username for Git HTTP authentication.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "type": "object"
+              },
+              "description": "Host-keyed username/password credentials for Git HTTP authentication.",
+              "type": "object"
+            },
             "ssh_key": {
               "description": "Inline SSH private key for Git authentication.",
               "type": "string"
@@ -23,7 +44,8 @@
           },
           "required": [
             "ssh_key",
-            "ssh_key_path"
+            "ssh_key_path",
+            "credentials"
           ],
           "type": "object"
         },

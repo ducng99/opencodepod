@@ -47,6 +47,7 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
 | `mounts` | array | `[]` | Extra host → container mounts applied to every project. Each item has `source` (host path), `target` (container path), and optional `read_only` (boolean). |
 | `git.auth.ssh_key` | string | *(empty)* | Inline SSH private key used for cloning private git repositories. Copied into containers before start via the Docker API. |
 | `git.auth.ssh_key_path` | string | `/home/coder/.ssh/id_ed25519` | Destination path inside the container where the SSH key is copied. |
+| `git.auth.credentials` | object | `{}` | Host-keyed username/password credentials for Git HTTP authentication. Each key is a hostname (e.g. `github.com`) and each value has `username` and `password` fields. Copied into containers as `~/.git-credentials` with `credential.helper store` configured automatically. |
 
 ### Example `config.json`
 
@@ -65,7 +66,13 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
   "git": {
     "auth": {
       "ssh_key": "{file:<host_path_to_ssh_key>}",
-      "ssh_key_path": "/home/coder/.ssh/id_ed25519"
+      "ssh_key_path": "/home/coder/.ssh/id_ed25519",
+      "credentials": {
+        "github.com": {
+          "username": "myuser",
+          "password": "ghp_xxx"
+        }
+      }
     }
   }
 }

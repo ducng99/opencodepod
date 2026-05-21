@@ -10,6 +10,7 @@ import (
 	"io"
 	"math/big"
 	"net/netip"
+	"net/url"
 	"path/filepath"
 	"strconv"
 
@@ -215,6 +216,14 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		}
 	}
 
+	// Inject Git HTTP credentials directly into container filesystem before start.
+	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy git credentials: %w", err)
+		}
+	}
+
 	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
 		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		for _, v := range p.Volumes {
@@ -352,6 +361,13 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
 			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy gpg key: %w", err)
+		}
+	}
+
+	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy git credentials: %w", err)
 		}
 	}
 
@@ -500,6 +516,39 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 
 	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
 		DestinationPath: "/home/coder/.gnupg",
+		Content:         &buf,
+	})
+	return err
+}
+
+func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	var content bytes.Buffer
+	for host, cred := range dm.cfg.Git.Auth.Credentials {
+		username := url.QueryEscape(cred.Username)
+		password := url.QueryEscape(cred.Password)
+		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
+	}
+
+	hdr := &tar.Header{
+		Name: ".git-credentials",
+		Mode: 0600,
+		Size: int64(content.Len()),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if _, err := tw.Write(content.Bytes()); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+
+	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+		DestinationPath: "/home/coder",
 		Content:         &buf,
 	})
 	return err
