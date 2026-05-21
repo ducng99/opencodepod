@@ -26,6 +26,23 @@ if [ -n "$GIT_USER_EMAIL" ] && [ -z "$(git config --global user.email)" ]; then
   echo "Git user.email configured."
 fi
 
+# Configure GPG signing if key is provided
+if [ -f /home/coder/.gnupg/private.key ]; then
+  sudo chown -R coder:coder /home/coder/.gnupg
+  chmod 700 /home/coder/.gnupg
+  chmod 600 /home/coder/.gnupg/private.key
+
+  # Import the key
+  gpg --import /home/coder/.gnupg/private.key 2>/dev/null || true
+
+  # Configure git to use GPG signing
+  if [ -n "$GIT_GPG_KEY_ID" ] && [ -z "$(git config --global user.signingkey)" ]; then
+    git config --global user.signingkey "$GIT_GPG_KEY_ID"
+    git config --global commit.gpgsign true
+    echo "GPG signing configured."
+  fi
+fi
+
 # Install the provided SSH public key for the coder user
 if [ -n "$SSH_PUBLIC_KEY" ]; then
   mkdir -p /home/coder/.ssh

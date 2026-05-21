@@ -19,10 +19,16 @@ type GitAuthConfig struct {
 	SSHKeyPath string `json:"ssh_key_path"`
 }
 
+type GPGConfig struct {
+	KeyID      string `json:"key_id"`
+	PrivateKey string `json:"private_key"`
+}
+
 type GitConfig struct {
 	Auth      GitAuthConfig `json:"auth"`
 	UserName  string        `json:"user_name"`
 	UserEmail string        `json:"user_email"`
+	GPG       GPGConfig     `json:"gpg"`
 }
 
 type Config struct {

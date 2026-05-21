@@ -145,6 +145,9 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	if dm.cfg.Git.UserEmail != "" {
 		env = append(env, fmt.Sprintf("GIT_USER_EMAIL=%s", dm.cfg.Git.UserEmail))
 	}
+	if dm.cfg.Git.GPG.KeyID != "" {
+		env = append(env, fmt.Sprintf("GIT_GPG_KEY_ID=%s", dm.cfg.Git.GPG.KeyID))
+	}
 
 	containerConfig := &container.Config{
 		Image:        image,
@@ -176,9 +179,9 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 
 	hostConfig := &container.HostConfig{
-		PortBindings:  portBindings,
-		Binds:         binds,
-		ExtraHosts:    extraHosts,
+		PortBindings: portBindings,
+		Binds:        binds,
+		ExtraHosts:   extraHosts,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},
@@ -201,6 +204,14 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
 			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git ssh key: %w", err)
+		}
+	}
+
+	// Inject GPG private key directly into container filesystem before start.
+	if dm.cfg.Git.GPG.PrivateKey != "" {
+		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
 
@@ -337,6 +348,13 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 		}
 	}
 
+	if dm.cfg.Git.GPG.PrivateKey != "" {
+		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy gpg key: %w", err)
+		}
+	}
+
 	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
 		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container start: %w", err)
@@ -455,6 +473,33 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 
 	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
 		DestinationPath: filepath.Dir(dm.cfg.Git.Auth.SSHKeyPath),
+		Content:         &buf,
+	})
+	return err
+}
+
+func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) error {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	content := []byte(dm.cfg.Git.GPG.PrivateKey)
+	hdr := &tar.Header{
+		Name: "private.key",
+		Mode: 0600,
+		Size: int64(len(content)),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if _, err := tw.Write(content); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+
+	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+		DestinationPath: "/home/coder/.gnupg",
 		Content:         &buf,
 	})
 	return err
