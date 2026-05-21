@@ -16,14 +16,14 @@ const (
 )
 
 type Project struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	GitRepo string `json:"git_repo,omitempty"`
-	Status  string `json:"status"`
-	SSHPort int    `json:"ssh_port"`
-	WebPort int    `json:"web_port"`
-	Volume  string `json:"volume"`
-	Image   string `json:"image"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	GitRepo string   `json:"git_repo,omitempty"`
+	Status  string   `json:"status"`
+	SSHPort int      `json:"ssh_port"`
+	WebPort int      `json:"web_port"`
+	Volumes []string `json:"volumes"`
+	Image   string   `json:"image"`
 }
 
 type CreateRequest struct {
@@ -48,12 +48,20 @@ func ProjectFromLabels(id string, labels map[string]string) *Project {
 		Name:    labels[LabelName],
 		GitRepo: labels[LabelGitRepo],
 		Image:   labels[LabelImage],
-		Volume:  VolumeName(id),
+		Volumes: ProjectVolumes(id),
 	}
+}
+
+func ProjectVolumes(id string) []string {
+	return []string{VolumeName(id), HomeVolumeName(id)}
 }
 
 func VolumeName(id string) string {
 	return fmt.Sprintf("cp-vol-%s", id)
+}
+
+func HomeVolumeName(id string) string {
+	return fmt.Sprintf("cp-vol-%s-home", id)
 }
 
 func ContainerName(id string) string {

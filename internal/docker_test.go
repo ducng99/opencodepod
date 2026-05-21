@@ -74,9 +74,11 @@ func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 			t.Errorf("cleanup container remove failed: %v", err)
 		}
 	}
-	// Remove volume
-	if _, err := dm.client.VolumeRemove(ctx, VolumeName(id), dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
-		t.Errorf("cleanup volume remove failed: %v", err)
+	// Remove volumes
+	for _, vol := range ProjectVolumes(id) {
+		if _, err := dm.client.VolumeRemove(ctx, vol, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+			t.Errorf("cleanup volume %s remove failed: %v", vol, err)
+		}
 	}
 }
 
@@ -128,8 +130,14 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if p.Name != "test-create" {
 		t.Errorf("expected name test-create, got %s", p.Name)
 	}
-	if p.Volume != VolumeName(p.ID) {
-		t.Errorf("expected volume %s, got %s", VolumeName(p.ID), p.Volume)
+	if len(p.Volumes) != 2 {
+		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
+	}
+	if p.Volumes[0] != VolumeName(p.ID) {
+		t.Errorf("expected volume %s, got %s", VolumeName(p.ID), p.Volumes[0])
+	}
+	if p.Volumes[1] != HomeVolumeName(p.ID) {
+		t.Errorf("expected home volume %s, got %s", HomeVolumeName(p.ID), p.Volumes[1])
 	}
 	if p.Status == "" {
 		t.Error("expected non-empty status")
@@ -158,14 +166,16 @@ func TestDockerManager_CreateProject(t *testing.T) {
 		t.Errorf("expected container label project.name=test-create")
 	}
 
-	// Verify volume exists
-	volResult, err := dm.client.VolumeInspect(ctx, p.Volume, dockerclient.VolumeInspectOptions{})
-	if err != nil {
-		t.Fatalf("volume inspect failed: %v", err)
-	}
-	vol := volResult.Volume
-	if vol.Name != p.Volume {
-		t.Errorf("expected volume name %s, got %s", p.Volume, vol.Name)
+	// Verify volumes exist
+	for _, vol := range p.Volumes {
+		volResult, err := dm.client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
+		if err != nil {
+			t.Fatalf("volume inspect failed for %s: %v", vol, err)
+		}
+		v := volResult.Volume
+		if v.Name != vol {
+			t.Errorf("expected volume name %s, got %s", vol, v.Name)
+		}
 	}
 }
 
@@ -259,9 +269,11 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 		t.Errorf("expected 0 containers after delete, got %d", len(result.Items))
 	}
 
-	_, err = dm.client.VolumeInspect(ctx, VolumeName(id), dockerclient.VolumeInspectOptions{})
-	if err == nil {
-		t.Error("expected volume to be removed")
+	for _, vol := range ProjectVolumes(id) {
+		_, err = dm.client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
+		if err == nil {
+			t.Errorf("expected volume %s to be removed", vol)
+		}
 	}
 }
 

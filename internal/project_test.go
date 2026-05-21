@@ -49,14 +49,26 @@ func TestProjectFromLabels(t *testing.T) {
 	if p.Image != "img:v2" {
 		t.Errorf("expected image img:v2, got %s", p.Image)
 	}
-	if p.Volume != VolumeName("xyz789") {
-		t.Errorf("expected volume %s, got %s", VolumeName("xyz789"), p.Volume)
+	if len(p.Volumes) != 2 {
+		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
+	}
+	if p.Volumes[0] != VolumeName("xyz789") {
+		t.Errorf("expected volume %s, got %s", VolumeName("xyz789"), p.Volumes[0])
+	}
+	if p.Volumes[1] != HomeVolumeName("xyz789") {
+		t.Errorf("expected home volume %s, got %s", HomeVolumeName("xyz789"), p.Volumes[1])
 	}
 }
 
 func TestVolumeName(t *testing.T) {
 	if VolumeName("abc") != "cp-vol-abc" {
 		t.Errorf("expected cp-vol-abc, got %s", VolumeName("abc"))
+	}
+}
+
+func TestHomeVolumeName(t *testing.T) {
+	if HomeVolumeName("abc") != "cp-vol-abc-home" {
+		t.Errorf("expected cp-vol-abc-home, got %s", HomeVolumeName("abc"))
 	}
 }
 
