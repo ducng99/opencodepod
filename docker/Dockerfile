@@ -83,5 +83,8 @@ COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 WORKDIR /workspaces
 EXPOSE 8080
 
+HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/global/health || exit 1
+
 ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
 CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "8080", "--cors", "*"]
