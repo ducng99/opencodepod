@@ -1,7 +1,6 @@
 FROM ubuntu:latest
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -64,6 +63,7 @@ RUN mkdir -p /workspaces \
 
 # Install opencode as user 'coder'
 USER coder
+ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
 
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
