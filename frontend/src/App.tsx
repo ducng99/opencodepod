@@ -9,13 +9,15 @@ import {
   upgradeProject,
 } from "./api";
 import { Header } from "./components/Header";
-import { Toolbar } from "./components/Toolbar";
+import { Modal } from "./components/Modal";
+import { CreateProjectForm } from "./components/CreateProjectForm";
 import { ProjectCard } from "./components/ProjectCard";
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [status, setStatus] = useState("Connecting…");
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -70,7 +72,25 @@ export function App() {
     <div className="min-h-screen bg-oc-bg text-oc-text-secondary">
       <Header status={status} error={error} />
       <main className="max-w-6xl mx-auto px-5 py-5">
-        <Toolbar onCreate={handleCreate} />
+        <button
+          onClick={() => setModalOpen(true)}
+          className="px-4 py-2 bg-oc-accent hover:bg-oc-accent-hover text-white text-sm font-medium rounded-md transition-colors mb-5"
+        >
+          + New Project
+        </button>
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title="New Project"
+        >
+          <CreateProjectForm
+            onSubmit={async (name, gitRepo, image) => {
+              await handleCreate(name, gitRepo, image);
+              setModalOpen(false);
+            }}
+            onCancel={() => setModalOpen(false)}
+          />
+        </Modal>
         {projects.length === 0 ? (
           <p className="text-oc-text-muted">No projects yet.</p>
         ) : (
