@@ -67,7 +67,7 @@ ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
 
 RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://opencode.ai/install | bash
-COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
+COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.jsonc
 
 # Write SSH client config for GitHub / GitLab
 RUN mkdir -p ~/.ssh \
