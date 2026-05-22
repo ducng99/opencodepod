@@ -4,7 +4,7 @@ This is the isolated Docker workspace for a coding agent. You have full sudo acc
 
 ## Environment
 
-- **OS**: Ubuntu 24.04 (minimal server image)
+- **OS**: Ubuntu LTS latest
 - **User**: `coder` (UID auto-assigned, home `/home/coder`)
 - **Sudo**: passwordless — `sudo apt-get install ...` works without prompts
 - **Shell**: Bash
@@ -12,12 +12,13 @@ This is the isolated Docker workspace for a coding agent. You have full sudo acc
 
 ## Pre-installed Tools
 
-Core build/runtime stack:
+Some core build/runtime stack:
 - `git`, `curl`, `wget`, `build-essential`
 - `python3`, `python3-pip`, `python3-venv`
-- `nodejs` (via apt — may be an older LTS; upgrade with `npm install -g n` if you need a specific version)
-- `vim`, `nano`, `unzip`, `zip`, `jq`, `htop`, `tree`
-- `openssh-server` (sshd runs on container start; public key auth only)
+- `nodejs` (via apt — may be an older LTS)
+- `unzip`, `zip`, `jq`, `htop`, `tree`, `ripgrep`
+
+More tools are available.
 
 ## What you can do
 
@@ -29,7 +30,3 @@ Core build/runtime stack:
 ## Conventions
 
 - Keep project files under `/workspaces` when possible
-- If you need a specific language version (e.g., newer Node or Python), install it inside the container rather than modifying the base image
-- The host binds random external ports for SSH and the web UI; you don't need to know them unless you are debugging networking
-- SSH access is configured automatically if the host sets `SSH_PUBLIC_KEY` — the key is written to `~coder/.ssh/authorized_keys` on container start
-- Git SSH key is copied into the container at `/home/coder/.ssh/id_ed25519` before startup when `git.auth.ssh_key` is configured on the host. The entrypoint fixes ownership, writes an `~/.ssh/config` entry for `github.com` and `gitlab.com`, and adds the key to the ssh-agent.

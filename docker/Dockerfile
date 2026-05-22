@@ -65,6 +65,7 @@ RUN mkdir -p /workspaces \
 USER coder
 ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
 
+RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=coder:coder opencode.jsonc ~/.config/opencode/opencode.jsonc
 
