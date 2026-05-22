@@ -12,7 +12,7 @@ import (
 
 func setupTestServer(t *testing.T) (*Server, *DockerManager) {
 	t.Helper()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	cfg := &Config{
 		ListenAddr:   ":8080",
 		DefaultImage: testImage,

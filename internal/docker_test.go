@@ -19,7 +19,7 @@ import (
 // testImage is a lightweight image that stays running so we can test start/stop.
 const testImage = "nginx:alpine"
 
-func skipIfNoDocker(t *testing.T) *DockerManager {
+func requireDocker(t *testing.T) *DockerManager {
 	t.Helper()
 	cfg := &Config{
 		ListenAddr:   ":8080",
@@ -27,7 +27,7 @@ func skipIfNoDocker(t *testing.T) *DockerManager {
 	}
 	dm, err := NewDockerManager(cfg)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -37,7 +37,7 @@ func skipIfNoDocker(t *testing.T) *DockerManager {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(ctx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	// Ensure test image is present; pull if missing.
@@ -47,12 +47,12 @@ func skipIfNoDocker(t *testing.T) *DockerManager {
 			defer pullCancel()
 			pr, err := dm.client.ImagePull(pullCtx, testImage, dockerclient.ImagePullOptions{})
 			if err != nil {
-				t.Skipf("unable to pull test image %s: %v", testImage, err)
+				t.Fatalf("unable to pull test image %s: %v", testImage, err)
 			}
 			_, _ = io.Copy(io.Discard, pr)
 			_ = pr.Close()
 		} else {
-			t.Skipf("unable to inspect test image %s: %v", testImage, err)
+			t.Fatalf("unable to inspect test image %s: %v", testImage, err)
 		}
 	}
 
@@ -86,7 +86,7 @@ func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 
 func TestDockerManager_ListProjects(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	projects, err := dm.ListProjects(ctx)
@@ -98,7 +98,7 @@ func TestDockerManager_ListProjects(t *testing.T) {
 }
 
 func TestDockerManager_CreateProject_PullsImage(t *testing.T) {
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	// Remove the image if present so we can test auto-pull.
@@ -118,7 +118,7 @@ func TestDockerManager_CreateProject_PullsImage(t *testing.T) {
 
 func TestDockerManager_CreateProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-create"}
@@ -185,7 +185,7 @@ func TestDockerManager_CreateProject(t *testing.T) {
 
 func TestDockerManager_GetProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-get"}
@@ -215,7 +215,7 @@ func TestDockerManager_GetProject(t *testing.T) {
 
 func TestDockerManager_StopStartProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-lifecycle"}
@@ -255,7 +255,7 @@ func TestDockerManager_StopStartProject(t *testing.T) {
 
 func TestDockerManager_DeleteProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-delete"}
@@ -295,7 +295,7 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithSSH)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -304,7 +304,7 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	req := &CreateRequest{Name: "test-ssh-key"}
@@ -351,7 +351,7 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithKey)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -360,7 +360,7 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	req := &CreateRequest{Name: "test-git-ssh-key"}
@@ -418,7 +418,7 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithCreds)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -427,7 +427,7 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	req := &CreateRequest{Name: "test-git-credentials"}
@@ -467,7 +467,7 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 
 func TestDockerManager_containerToProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	c := &container.Summary{
 		ID:     "cid",
 		Labels: map[string]string{LabelProjectID: "pid", LabelName: "n"},
@@ -491,7 +491,7 @@ func TestDockerManager_containerToProject(t *testing.T) {
 
 func TestDockerManager_refreshState(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-refresh"}
@@ -557,7 +557,7 @@ func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithHosts)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -566,7 +566,7 @@ func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	req := &CreateRequest{Name: "test-hosts"}
@@ -620,7 +620,7 @@ func TestDockerManager_CreateProject_WithGitUserEnv(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithGitUser)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -629,7 +629,7 @@ func TestDockerManager_CreateProject_WithGitUserEnv(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	req := &CreateRequest{Name: "test-git-user-env"}
@@ -682,7 +682,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	}
 	dm, err := NewDockerManager(cfgWithGPG)
 	if err != nil {
-		t.Skipf("docker client unavailable: %v", err)
+		t.Fatalf("docker client unavailable: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = dm.Close()
@@ -691,7 +691,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
-		t.Skipf("docker daemon unreachable: %v", err)
+		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	// Create a container without starting it, then create the .gnupg directory manually.
@@ -827,7 +827,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 
 func TestDockerManager_UpgradeProject(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	req := &CreateRequest{Name: "test-upgrade"}
@@ -873,7 +873,7 @@ func TestDockerManager_UpgradeProject(t *testing.T) {
 
 func TestDockerManager_UpgradeProject_NotFound(t *testing.T) {
 	t.Parallel()
-	dm := skipIfNoDocker(t)
+	dm := requireDocker(t)
 	ctx := context.Background()
 
 	_, err := dm.UpgradeProject(ctx, "nonexistent-id")
