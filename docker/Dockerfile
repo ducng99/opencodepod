@@ -79,6 +79,9 @@ RUN mkdir -p ~/.ssh \
     } > ~/.ssh/config \
     && chmod 600 ~/.ssh/config
 
+# Initialise GPG home directory so GPG creates its internal structure
+RUN gpg --list-keys >/dev/null 2>&1 || true
+
 COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
 
 WORKDIR /workspaces

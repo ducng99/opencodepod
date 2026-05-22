@@ -535,7 +535,7 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 
 	content := []byte(dm.cfg.Git.GPG.PrivateKey)
 	hdr := &tar.Header{
-		Name: "private.key",
+		Name: ".gnupg/private.key",
 		Mode: 0600,
 		Size: int64(len(content)),
 	}
@@ -550,7 +550,7 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 	}
 
 	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: "/home/coder/.gnupg",
+		DestinationPath: "/home/coder",
 		Content:         &buf,
 	})
 	return err
