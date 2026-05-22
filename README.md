@@ -48,6 +48,11 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
 | `git.auth.ssh_key` | string | *(empty)* | Inline SSH private key used for cloning private git repositories. Copied into containers before start via the Docker API. |
 | `git.auth.ssh_key_path` | string | `/home/coder/.ssh/id_ed25519` | Destination path inside the container where the SSH key is copied. |
 | `git.auth.credentials` | object | `{}` | Host-keyed username/password credentials for Git HTTP authentication. Each key is a hostname (e.g. `github.com`) and each value has `username` and `password` fields. Copied into containers as `~/.git-credentials` with `credential.helper store` configured automatically. |
+| `hosts` | object | `{}` | Custom host entries added to container `/etc/hosts`. |
+| `git.user_name` | string | *(empty)* | Git commit author name. |
+| `git.user_email` | string | *(empty)* | Git commit author email. |
+| `git.gpg.key_id` | string | *(empty)* | GPG key ID used for commit signing. |
+| `git.gpg.private_key` | string | *(empty)* | Inline GPG private key for signing commits. |
 
 ### Example `config.json`
 
@@ -63,7 +68,12 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
       "read_only": true
     }
   ],
+  "hosts": {
+    "my-registry.local": "10.0.0.5"
+  },
   "git": {
+    "user_name": "My Name",
+    "user_email": "my@email.com",
     "auth": {
       "ssh_key": "{file:<host_path_to_ssh_key>}",
       "ssh_key_path": "/home/coder/.ssh/id_ed25519",
@@ -73,6 +83,10 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
           "password": "ghp_xxx"
         }
       }
+    },
+    "gpg": {
+      "key_id": "A1B2C3D4",
+      "private_key": "{file:<host_path_to_gpg_key>}"
     }
   }
 }
@@ -210,23 +224,17 @@ docker run -d \
 
 ## Development
 
-### Project Structure
+### Building
 
-```
-opencodepod/
-├── cmd/server/main.go      # Entry point
-├── internal/
-│   ├── config.go           # JSON config loader
-│   ├── docker.go           # Docker lifecycle manager
-│   ├── handlers.go         # HTTP handlers
-│   ├── project.go          # Domain types & label helpers
-│   └── *_test.go           # Unit & integration tests
-├── frontend/
-│   ├── embed.go            # Go embed for static files
-│   └── dist/index.html     # Single-file vanilla JS UI
-├── Dockerfile
-├── go.mod
-└── AGENTS.md               # Agent/developer notes
+```bash
+# Build frontend (requires Bun)
+cd frontend && bun install && bun run build && cd ..
+
+# Build Go server
+go build -o opencodepod-server ./cmd/server
+
+# Build client Docker image
+docker build -t opencodepod-client:latest -f docker/Dockerfile ./docker
 ```
 
 ### Testing
