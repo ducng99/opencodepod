@@ -6,7 +6,7 @@ eval "$(ssh-agent -s)"
 WORKSPACE="/workspaces"
 
 # Ensure dirs are owned by coder
-sudo chown coder:coder /home/coder/.local /home/coder/.local/share /home/coder/.local/share/opencode
+sudo chown coder:coder /home/coder/.local /home/coder/.local/share /home/coder/.local/share/opencode /home/coder/.config /home/coder/.config/opencode
 
 opencode upgrade || true
 
