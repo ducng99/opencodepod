@@ -47,6 +47,7 @@ fi
 
 # Configure Git HTTP credentials if provided
 if [ -f /home/coder/.git-credentials ]; then
+  sudo chown coder:coder /home/coder/.git-credentials
   chmod 600 /home/coder/.git-credentials
   if [ -z "$(git config --global credential.helper)" ]; then
     git config --global credential.helper store
