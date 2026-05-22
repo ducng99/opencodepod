@@ -296,11 +296,11 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 	inspect := inspectResult.Container
 	image := inspect.Config.Image
 
-	// Capture the current image ID so we can tell whether the pull actually changed anything.
-	var oldImageID string
-	if oldInspect, err := dm.client.ImageInspect(ctx, image); err == nil {
-		oldImageID = oldInspect.ID
-	}
+	// Capture the container's actual image ID so we can tell whether the pull
+	// actually changed anything. We must use inspect.Image (the ID the container
+	// was created from) rather than ImageInspect by tag, because the local tag
+	// may already point to a newer image while the container still runs the old one.
+	oldImageID := inspect.Image
 
 	// Pull the latest image. The daemon streams JSON progress messages; we must
 	// drain the entire body so the HTTP connection completes and the pull finishes.
