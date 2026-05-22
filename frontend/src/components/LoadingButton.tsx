@@ -10,10 +10,10 @@ export function LoadingButton({ loading = false, children, className = "", ...pr
     <button
       {...props}
       disabled={loading || props.disabled}
-      className={`relative overflow-hidden rounded-md transition-colors ${className}`}
+      className={`relative overflow-hidden rounded-lg transition-all duration-200 btn-glow disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       <span
-        className={`inline-block transition-opacity duration-200 ${
+        className={`inline-flex items-center gap-2 transition-opacity duration-200 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
       >
@@ -21,13 +21,29 @@ export function LoadingButton({ loading = false, children, className = "", ...pr
       </span>
       {loading && (
         <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span
-            className="absolute inset-0 shimmer-sweep"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
-            }}
-          />
+          <svg
+            className="spinner w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="60"
+              strokeDashoffset="20"
+              opacity="0.3"
+            />
+            <path
+              d="M12 2a10 10 0 0 1 10 10"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
         </span>
       )}
     </button>

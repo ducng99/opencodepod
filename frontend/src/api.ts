@@ -7,7 +7,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!r.ok) {
     throw new Error(await r.text());
   }
-  return r.json();
+  const text = await r.text();
+  return text ? JSON.parse(text) : undefined as T;
 }
 
 export function listProjects() {

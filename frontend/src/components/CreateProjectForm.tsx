@@ -14,7 +14,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const id = setTimeout(() => nameRef.current?.focus(), 0);
+    const id = setTimeout(() => nameRef.current?.focus(), 50);
     return () => clearTimeout(id);
   }, []);
 
@@ -39,9 +39,9 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-oc-text-secondary mb-1">
+        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
           Project name
         </label>
         <input
@@ -50,46 +50,46 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
           placeholder="my-project"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 bg-oc-bg border border-oc-border rounded-md text-sm text-oc-text placeholder:text-oc-text-muted focus:outline-none focus:ring-2 focus:ring-oc-accent"
+          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-oc-text-secondary mb-1">
-          Git repo
+        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+          Git repository
         </label>
         <input
           type="text"
           placeholder="user/repo (optional)"
           value={gitRepo}
           onChange={(e) => setGitRepo(e.target.value)}
-          className="w-full px-3 py-2 bg-oc-bg border border-oc-border rounded-md text-sm text-oc-text placeholder:text-oc-text-muted focus:outline-none focus:ring-2 focus:ring-oc-accent"
+          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-oc-text-secondary mb-1">
-          Image
+        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+          Docker image
         </label>
         <input
           type="text"
           placeholder="default image (optional)"
           value={image}
           onChange={(e) => setImage(e.target.value)}
-          className="w-full px-3 py-2 bg-oc-bg border border-oc-border rounded-md text-sm text-oc-text placeholder:text-oc-text-muted focus:outline-none focus:ring-2 focus:ring-oc-accent"
+          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
         />
       </div>
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-3">
         <button
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-oc-text-secondary bg-oc-bg border border-oc-border rounded-md hover:bg-oc-surface-hover transition-colors disabled:opacity-50"
+          className="px-5 py-2.5 text-sm font-medium text-oc-text-secondary bg-transparent border border-oc-border rounded-xl hover:bg-white/5 hover:border-oc-border-strong transition-all duration-200 disabled:opacity-50"
         >
           Cancel
         </button>
         <LoadingButton
           type="submit"
           loading={loading}
-          className="px-4 py-2 bg-oc-accent hover:bg-oc-accent-hover disabled:opacity-50 text-white text-sm font-medium rounded-md transition-colors"
+          className="px-5 py-2.5 bg-oc-accent hover:bg-oc-accent-hover disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all duration-200"
         >
           Create Project
         </LoadingButton>

@@ -66,35 +66,40 @@ export function ProjectCard({
   };
 
   return (
-    <div className="bg-oc-surface border border-oc-border rounded-xl p-4 flex flex-col gap-3 relative">
-      <div className="absolute top-3 right-4">
-        <Badge status={project.status} />
-      </div>
-      <div>
-        <h3 className="text-base font-semibold text-oc-text pr-20">
-          {project.name || "Untitled"}
-        </h3>
-        <div className="text-xs text-oc-text-muted mt-1 flex items-center gap-2">
-          <span>{project.id}</span>
-          <span>•</span>
-          <span className="truncate" style={{ direction: "rtl" }}>{project.image || ""}</span>
+    <div className="card-glow p-5 flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-oc-text tracking-tight truncate">
+            {project.name || "Untitled"}
+          </h3>
+          <Badge status={project.status} />
+        </div>
+        <div className="text-xs text-oc-text-muted flex items-center gap-2 font-mono">
+          <span className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-oc-text-secondary shrink-0">
+            {project.id}
+          </span>
+          <span className="text-oc-text-muted/50">/</span>
+          <span className="truncate max-w-[180px]" style={{ direction: "rtl" }} title={project.image || ""}>
+            {project.image || "default"}
+          </span>
         </div>
       </div>
 
-      <div className="text-sm space-y-1">
+      <div className="space-y-2.5 text-sm">
         {sshCmd && (
-          <div className="text-oc-text-secondary">
-            SSH: <code className="text-oc-text bg-oc-code-bg px-1.5 py-0.5 rounded text-xs">{sshCmd}</code>
+          <div className="flex items-center gap-2 text-oc-text-secondary">
+            <span className="text-xs font-semibold uppercase tracking-wider text-oc-text-muted w-8 shrink-0">SSH</span>
+            <code className="code-block truncate">{sshCmd}</code>
           </div>
         )}
         {webUrl && (
-          <div className="text-oc-text-secondary">
-            Web:{" "}
+          <div className="flex items-center gap-2 text-oc-text-secondary">
+            <span className="text-xs font-semibold uppercase tracking-wider text-oc-text-muted w-8 shrink-0">Web</span>
             <a
               href={webUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-oc-accent hover:underline"
+              className="code-block truncate text-oc-accent hover:text-oc-accent-hover transition-colors"
             >
               {webUrl}
             </a>
@@ -107,31 +112,48 @@ export function ProjectCard({
           <LoadingButton
             onClick={handleStart}
             loading={starting}
-            className="px-3 py-1.5 bg-oc-green hover:bg-oc-green-hover text-white text-xs font-medium rounded-md transition-colors"
+            className="px-3.5 py-2 bg-oc-green/10 hover:bg-oc-green/20 text-oc-green text-xs font-semibold rounded-lg border border-oc-green/20 hover:border-oc-green/40 transition-all duration-200"
           >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
             Start
           </LoadingButton>
         ) : (
           <LoadingButton
             onClick={handleStop}
             loading={stopping}
-            className="px-3 py-1.5 bg-oc-accent hover:bg-oc-accent-hover text-white text-xs font-medium rounded-md transition-colors"
+            className="px-3.5 py-2 bg-oc-accent/10 hover:bg-oc-accent/20 text-oc-accent text-xs font-semibold rounded-lg border border-oc-accent/20 hover:border-oc-accent/40 transition-all duration-200"
           >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
             Stop
           </LoadingButton>
         )}
         <LoadingButton
           onClick={handleUpgrade}
           loading={upgrading}
-          className="px-3 py-1.5 bg-oc-accent hover:bg-oc-accent-hover text-white text-xs font-medium rounded-md transition-colors"
+          className="px-3.5 py-2 bg-white/[0.04] hover:bg-white/[0.08] text-oc-text-secondary text-xs font-semibold rounded-lg border border-white/[0.08] hover:border-white/[0.14] transition-all duration-200"
         >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+            <path d="M16 21h5v-5" />
+          </svg>
           Upgrade
         </LoadingButton>
         <LoadingButton
           onClick={handleDelete}
           loading={deleting}
-          className="px-3 py-1.5 bg-oc-red hover:bg-oc-red-hover text-white text-xs font-medium rounded-md transition-colors"
+          className="px-3.5 py-2 bg-transparent hover:bg-oc-red/10 text-oc-text-muted hover:text-oc-red text-xs font-semibold rounded-lg border border-white/[0.06] hover:border-oc-red/30 transition-all duration-200 ml-auto"
         >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
           Delete
         </LoadingButton>
       </div>
