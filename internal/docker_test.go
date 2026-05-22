@@ -489,7 +489,7 @@ func TestDockerManager_containerToProject(t *testing.T) {
 	}
 }
 
-func TestDockerManager_refreshPorts(t *testing.T) {
+func TestDockerManager_refreshState(t *testing.T) {
 	t.Parallel()
 	dm := skipIfNoDocker(t)
 	ctx := context.Background()
@@ -501,15 +501,45 @@ func TestDockerManager_refreshPorts(t *testing.T) {
 	}
 	defer cleanupTestProject(t, dm, p.ID)
 
-	refreshed, err := dm.refreshPorts(ctx, p)
+	refreshed, err := dm.refreshState(ctx, p)
 	if err != nil {
-		t.Fatalf("refreshPorts failed: %v", err)
+		t.Fatalf("refreshState failed: %v", err)
+	}
+	if refreshed.Status != "running" {
+		t.Errorf("expected running status after refresh, got %s", refreshed.Status)
 	}
 	if refreshed.SSHPort == 0 {
 		t.Error("expected non-zero SSHPort after refresh")
 	}
 	if refreshed.WebPort == 0 {
 		t.Error("expected non-zero WebPort after refresh")
+	}
+}
+
+func TestComputeStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		state        string
+		healthStatus string
+		want         string
+	}{
+		{"not running - exited", "exited", "", "stopped"},
+		{"not running - created", "created", "", "stopped"},
+		{"not running - dead", "dead", "", "stopped"},
+		{"running no healthcheck", "running", "", "running"},
+		{"running none health", "running", "none", "running"},
+		{"running healthy", "running", "healthy", "running"},
+		{"running starting", "running", "starting", "starting"},
+		{"running unhealthy", "running", "unhealthy", "unhealthy"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := computeStatus(tt.state, tt.healthStatus)
+			if got != tt.want {
+				t.Errorf("computeStatus(%q, %q) = %q, want %q", tt.state, tt.healthStatus, got, tt.want)
+			}
+		})
 	}
 }
 

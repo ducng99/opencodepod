@@ -67,7 +67,12 @@ func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, e
 	inspect := inspectResult.Container
 
 	p := ProjectFromLabels(id, inspect.Config.Labels)
-	p.Status = string(inspect.State.Status)
+
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 	return p, nil
@@ -239,7 +244,11 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 	inspect := inspectResult.Container
 
-	p.Status = string(inspect.State.Status)
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 
@@ -385,7 +394,12 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 	p := ProjectFromLabels(id, inspect.Config.Labels)
 	p.Image = image
 	p.Volumes = ProjectVolumes(id)
-	p.Status = string(inspect.State.Status)
+
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 
@@ -416,12 +430,28 @@ func (dm *DockerManager) DeleteProject(ctx context.Context, id string) error {
 	return nil
 }
 
+func computeStatus(state, healthStatus string) string {
+	if state != string(container.StateRunning) {
+		return "stopped"
+	}
+	switch healthStatus {
+	case string(container.Starting):
+		return "starting"
+	case string(container.Unhealthy):
+		return "unhealthy"
+	default:
+		return "running"
+	}
+}
+
 func (dm *DockerManager) containerToProject(c *container.Summary) *Project {
 	p := ProjectFromLabels(c.Labels[LabelProjectID], c.Labels)
-	p.Status = string(c.State)
-	if p.Status == "" {
-		p.Status = c.Status
+
+	healthStatus := ""
+	if c.Health != nil {
+		healthStatus = string(c.Health.Status)
 	}
+	p.Status = computeStatus(string(c.State), healthStatus)
 
 	// Parse ports from container summary (fast path)
 	for _, port := range c.Ports {
@@ -435,7 +465,7 @@ func (dm *DockerManager) containerToProject(c *container.Summary) *Project {
 	return p
 }
 
-func (dm *DockerManager) refreshPorts(ctx context.Context, p *Project) (*Project, error) {
+func (dm *DockerManager) refreshState(ctx context.Context, p *Project) (*Project, error) {
 	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
 	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
@@ -452,7 +482,12 @@ func (dm *DockerManager) refreshPorts(ctx context.Context, p *Project) (*Project
 		return nil, err
 	}
 	inspect := inspectResult.Container
-	p.Status = string(inspect.State.Status)
+
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
 	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
 	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
 	return p, nil
