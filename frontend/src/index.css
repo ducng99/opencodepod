@@ -30,3 +30,7 @@
 .shimmer-sweep {
   animation: shimmer-sweep 1.5s ease-in-out infinite;
 }
+
+button {
+  cursor: pointer;
+}
