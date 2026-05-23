@@ -1,5 +1,8 @@
 # OpenCodePod
 
+[![Build & Release](https://github.com/ducng99/opencodepod/actions/workflows/release.yml/badge.svg)](https://github.com/ducng99/opencodepod/actions/workflows/release.yml)
+[![Tests](https://github.com/ducng99/opencodepod/actions/workflows/test.yml/badge.svg)](https://github.com/ducng99/opencodepod/actions/workflows/test.yml)
+
 OpenCodePod is a lightweight, stateless Go server that turns Docker containers into isolated project workspaces. It manages the full lifecycle of development environments — create, start, stop, and delete — with zero database dependency. All state lives in Docker container labels and live container queries.
 
 ## Features
