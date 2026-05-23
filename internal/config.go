@@ -56,7 +56,7 @@ func LoadConfig() (*Config, error) {
 
 func loadConfigFrom(path string) (*Config, error) {
 	cfg := &Config{
-		ListenAddr:   ":8080",
+		ListenAddr:   "127.0.0.1:8080",
 		DefaultImage: "ghcr.io/ducng99/opencodepod-client:latest",
 		SSHPublicKey: "",
 		Mounts:       []Mount{},
