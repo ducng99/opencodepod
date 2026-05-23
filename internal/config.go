@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 )
 
 type Mount struct {
@@ -110,7 +111,7 @@ func expandValue(v reflect.Value, configDir string) error {
 			if err != nil {
 				return err
 			}
-			v.SetString(string(content))
+			v.SetString(strings.TrimSpace(string(content)))
 		}
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {

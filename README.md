@@ -42,6 +42,9 @@ The server starts on `http://localhost:8080` by default. Open your browser to `h
 
 Configuration is loaded from `config.json` in the working directory. Missing fields fall back to hard-coded defaults.
 
+`"{file:./git.key}"` syntax can be used to inline the content of the file into a field. See config example below how it is used for GPG key.<br/>
+Note: The content will be trimmed for both prefix and suffix.
+
 | JSON key | Type | Default | Description |
 |----------|------|---------|-------------|
 | `listen_addr` | string | `127.0.0.1:8080` | HTTP listen address. Listening on localhost only, if you want it accessible globally, or running in docker, use `0.0.0.0:8080` |
