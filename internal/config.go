@@ -2,6 +2,8 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -69,16 +71,19 @@ func loadConfigFrom(path string) (*Config, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
 		return cfg, nil
 	}
 
 	if err := json.Unmarshal(data, cfg); err != nil {
-		return cfg, err
+		return nil, err
 	}
 
 	configDir := filepath.Dir(path)
 	if err := expandPlaceholders(cfg, configDir); err != nil {
-		return cfg, err
+		return nil, err
 	}
 
 	return cfg, nil
