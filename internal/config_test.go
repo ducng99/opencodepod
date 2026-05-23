@@ -13,7 +13,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cfg.ListenAddr != ":8080" {
+	if cfg.ListenAddr != "127.0.0.1:8080" {
 		t.Errorf("expected ListenAddr ':8080', got '%s'", cfg.ListenAddr)
 	}
 	if cfg.DefaultImage != "ghcr.io/ducng99/opencodepod-client:latest" {
