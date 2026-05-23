@@ -54,25 +54,25 @@ func TestProjectFromLabels(t *testing.T) {
 	if len(p.Volumes) != 2 {
 		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
 	}
-	if p.Volumes[0] != VolumeName("xyz789") {
-		t.Errorf("expected volume %s, got %s", VolumeName("xyz789"), p.Volumes[0])
+	if p.Volumes[0] != WorkspacesVolumeName("xyz789") {
+		t.Errorf("expected workspaces volume %s, got %s", WorkspacesVolumeName("xyz789"), p.Volumes[0])
 	}
-	if p.Volumes[1] != HomeVolumeName("xyz789") {
-		t.Errorf("expected home volume %s, got %s", HomeVolumeName("xyz789"), p.Volumes[1])
-	}
-}
-
-func TestVolumeName(t *testing.T) {
-	t.Parallel()
-	if VolumeName("abc") != "cp-vol-abc" {
-		t.Errorf("expected cp-vol-abc, got %s", VolumeName("abc"))
+	if p.Volumes[1] != OpencodeSessionsVolumeName("xyz789") {
+		t.Errorf("expected opencode sessions volume %s, got %s", OpencodeSessionsVolumeName("xyz789"), p.Volumes[1])
 	}
 }
 
-func TestHomeVolumeName(t *testing.T) {
+func TestWorkspacesVolumeName(t *testing.T) {
 	t.Parallel()
-	if HomeVolumeName("abc") != "cp-vol-abc-home" {
-		t.Errorf("expected cp-vol-abc-home, got %s", HomeVolumeName("abc"))
+	if WorkspacesVolumeName("abc") != "cp-vol-abc-workspaces" {
+		t.Errorf("expected cp-vol-abc-workspaces, got %s", WorkspacesVolumeName("abc"))
+	}
+}
+
+func TestOpencodeSessionsVolumeName(t *testing.T) {
+	t.Parallel()
+	if OpencodeSessionsVolumeName("abc") != "cp-vol-abc-opencode" {
+		t.Errorf("expected cp-vol-abc-opencode, got %s", OpencodeSessionsVolumeName("abc"))
 	}
 }
 

@@ -137,11 +137,11 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if len(p.Volumes) != 2 {
 		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
 	}
-	if p.Volumes[0] != VolumeName(p.ID) {
-		t.Errorf("expected volume %s, got %s", VolumeName(p.ID), p.Volumes[0])
+	if p.Volumes[0] != WorkspacesVolumeName(p.ID) {
+		t.Errorf("expected volume %s, got %s", WorkspacesVolumeName(p.ID), p.Volumes[0])
 	}
-	if p.Volumes[1] != HomeVolumeName(p.ID) {
-		t.Errorf("expected home volume %s, got %s", HomeVolumeName(p.ID), p.Volumes[1])
+	if p.Volumes[1] != OpencodeSessionsVolumeName(p.ID) {
+		t.Errorf("expected home volume %s, got %s", OpencodeSessionsVolumeName(p.ID), p.Volumes[1])
 	}
 	if p.Status == "" {
 		t.Error("expected non-empty status")

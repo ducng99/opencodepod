@@ -63,8 +63,8 @@ func ProjectFromLabels(id string, labels map[string]string) *Project {
 
 func ProjectVolumeMounts(id string) []VolumeMount {
 	return []VolumeMount{
-		{Name: VolumeName(id), Target: "/workspaces"},
-		{Name: HomeVolumeName(id), Target: "/home/coder/.local/share/opencode"},
+		{Name: WorkspacesVolumeName(id), Target: "/workspaces"},
+		{Name: OpencodeSessionsVolumeName(id), Target: "/home/coder/.local/share/opencode"},
 	}
 }
 
@@ -77,12 +77,12 @@ func ProjectVolumes(id string) []string {
 	return names
 }
 
-func VolumeName(id string) string {
-	return fmt.Sprintf("cp-vol-%s", id)
+func WorkspacesVolumeName(id string) string {
+	return fmt.Sprintf("cp-vol-%s-workspaces", id)
 }
 
-func HomeVolumeName(id string) string {
-	return fmt.Sprintf("cp-vol-%s-home", id)
+func OpencodeSessionsVolumeName(id string) string {
+	return fmt.Sprintf("cp-vol-%s-opencode", id)
 }
 
 func ContainerName(id string) string {
