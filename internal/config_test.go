@@ -299,6 +299,50 @@ func TestLoadConfigHostsEmpty(t *testing.T) {
 	}
 }
 
+func TestLoadConfigPlaceholderMap(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	passPath := filepath.Join(dir, "github_pat.txt")
+
+	if err := os.WriteFile(passPath, []byte("ghp_from_file"), 0o644); err != nil {
+		t.Fatalf("write password file: %v", err)
+	}
+
+	content := `{
+		"git": {
+			"auth": {
+				"credentials": {
+					"github.com": {
+						"username": "myuser",
+						"password": "{file:github_pat.txt}"
+					}
+				}
+			}
+		}
+	}`
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := loadConfigFrom(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gh, ok := cfg.Git.Auth.Credentials["github.com"]
+	if !ok {
+		t.Fatal("expected github.com credential")
+	}
+	if gh.Username != "myuser" {
+		t.Errorf("expected github.com username 'myuser', got '%s'", gh.Username)
+	}
+	if gh.Password != "ghp_from_file" {
+		t.Errorf("expected github.com password 'ghp_from_file', got '%s'", gh.Password)
+	}
+}
+
 func TestLoadConfigCredentials(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

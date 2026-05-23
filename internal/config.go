@@ -119,6 +119,19 @@ func expandValue(v reflect.Value, configDir string) error {
 				return err
 			}
 		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			val := v.MapIndex(key)
+			if !val.IsValid() {
+				continue
+			}
+			copyVal := reflect.New(val.Type()).Elem()
+			copyVal.Set(val)
+			if err := expandValue(copyVal, configDir); err != nil {
+				return err
+			}
+			v.SetMapIndex(key, copyVal)
+		}
 	case reflect.Ptr:
 		if !v.IsNil() {
 			if err := expandValue(v.Elem(), configDir); err != nil {
