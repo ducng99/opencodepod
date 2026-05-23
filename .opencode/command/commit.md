@@ -3,7 +3,7 @@ description: git commit
 subtask: true
 ---
 
-commit and push
+commit changes
 
 use conventional commit prefixes:
 - feat: - new feature
