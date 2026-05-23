@@ -41,7 +41,7 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
 
 | JSON key | Type | Default | Description |
 |----------|------|---------|-------------|
-| `listen_addr` | string | `:8080` | HTTP listen address |
+| `listen_addr` | string | `127.0.0.1:8080` | HTTP listen address. Listening on localhost only, if you want it accessible globally, or running in docker, use `0.0.0.0:8080` |
 | `default_image` | string | `ghcr.io/ducng99/opencodepod-client:latest` | Default Docker image for new projects |
 | `ssh_public_key` | string | *(empty)* | SSH public key injected into containers via `SSH_PUBLIC_KEY` env |
 | `mounts` | array | `[]` | Extra host → container mounts applied to every project. Each item has `source` (host path), `target` (container path), and optional `read_only` (boolean). |
@@ -58,6 +58,7 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/ducng99/opencodepod/refs/heads/main/config.schema.json",
   "listen_addr": "0.0.0.0:8080",
   "default_image": "ghcr.io/ducng99/opencodepod-client:latest",
   "ssh_public_key": "ssh-ed25519 AAAAC3NzaC...",
@@ -80,12 +81,16 @@ Configuration is loaded from `config.json` in the working directory. Missing fie
       "credentials": {
         "github.com": {
           "username": "myuser",
-          "password": "ghp_xxx"
+          "password": "github_ghp_xxx"
+        },
+        "gitlab.company.internal": {
+          "username": "me",
+          "password": "idk"
         }
       }
     },
     "gpg": {
-      "key_id": "A1B2C3D4",
+      "key_id": "A1B2C3D4E5F6",
       "private_key": "{file:<host_path_to_gpg_key>}"
     }
   }
@@ -107,7 +112,44 @@ services:
 
 ### Cloning private repositories
 
-Set `git.auth.ssh_key` in `config.json` to an inline SSH private key. The server copies it into each new container before startup (never via env vars). The default destination is `/home/coder/.ssh/id_ed25519`; you can override it with `git.auth.ssh_key_path`.
+Pass a `git_repo` URL when creating a project. On first boot the container clones it into `/workspaces/<repo-name>`.
+
+**SSH key authentication**
+
+Set `git.auth.ssh_key` in `config.json` to your SSH private key. It is copied into containers automatically before startup. The default path inside the container is `/home/coder/.ssh/id_ed25519`; change it with `git.auth.ssh_key_path` if needed.
+
+> [!NOTE]
+> SSH keys with a passphrase are not supported because there is no interactive prompt to unlock them during container startup.
+> Either clone yourself after starting the project, or use HTTPS with a fine-grained personal access token (PAT).
+
+**HTTP credentials**
+
+For HTTPS repositories, set `git.auth.credentials` with host-keyed username/password (PAT) pairs:
+
+```json
+"git": {
+  "auth": {
+    "credentials": {
+      "github.com": {
+        "username": "myuser",
+        "password": "github_ghp_xxx"
+      }
+    }
+  }
+}
+```
+
+Git credential helper is configured automatically so clones proceed without prompts.
+
+### GPG signing
+
+To sign commits inside containers, set `git.gpg.key_id` and `git.gpg.private_key` in `config.json`.
+
+You can export your GPG with
+
+```sh
+gpg --armor --export-secret-keys "YOUR_KEY_ID" > gpg.key
+```
 
 ## Using the Web UI
 
@@ -122,81 +164,6 @@ Set `git.auth.ssh_key` in `config.json` to an inline SSH private key. The server
    - Start / Stop / Delete actions
 
 The UI polls the API every 5 seconds to keep the status grid fresh.
-
-## REST API
-
-Base URL: `http://localhost:8080/api`
-
-### List all projects
-
-```http
-GET /api/projects
-```
-
-Response:
-```json
-[
-  {
-    "id": "a1b2c3d4",
-    "name": "My Project",
-    "git_repo": "https://github.com/user/repo.git",
-    "status": "running",
-    "ssh_port": 49152,
-    "web_port": 49153,
-    "volume": "cp-vol-a1b2c3d4",
-    "image": "ghcr.io/ducng99/opencodepod-client:latest"
-  }
-]
-```
-
-### Create a project
-
-```http
-POST /api/projects
-Content-Type: application/json
-
-{
-  "name": "My Project",
-  "git_repo": "https://github.com/user/repo.git",
-  "image": "ghcr.io/ducng99/opencodepod-client:latest"
-}
-```
-
-`git_repo` and `image` are optional. If `image` is omitted, the configured `default_image` is used.
-
-### Get a project
-
-```http
-GET /api/projects/{id}
-```
-
-### Start a project
-
-```http
-POST /api/projects/{id}/start
-```
-
-### Stop a project
-
-```http
-POST /api/projects/{id}/stop
-```
-
-### Delete a project
-
-```http
-DELETE /api/projects/{id}
-```
-
-Deletes the container **and** its persistent volume. This cannot be undone.
-
-### Refresh ports
-
-```http
-GET /api/projects/{id}/ports
-```
-
-Re-inspects the container and returns the project with refreshed port mappings.
 
 ## Docker Deployment
 
