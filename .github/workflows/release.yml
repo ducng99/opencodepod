@@ -10,7 +10,7 @@ env:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    uses: ducng99/opencodepod/.github/workflows/test.yml@main
 
   build:
     strategy:

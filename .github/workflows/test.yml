@@ -5,13 +5,15 @@ on:
     branches:
       - main
     paths:
-      - '**/*_test.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/test.yml'
+      - "**/*_test.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/test.yml"
   pull_request:
     branches:
       - main
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   test:
