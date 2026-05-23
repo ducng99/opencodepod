@@ -24,10 +24,6 @@
                     "type": "string"
                   }
                 },
-                "required": [
-                  "username",
-                  "password"
-                ],
                 "type": "object"
               },
               "description": "Host-keyed username/password credentials for Git HTTP authentication.",
@@ -42,11 +38,6 @@
               "type": "string"
             }
           },
-          "required": [
-            "ssh_key",
-            "ssh_key_path",
-            "credentials"
-          ],
           "type": "object"
         },
         "gpg": {
@@ -61,10 +52,6 @@
               "type": "string"
             }
           },
-          "required": [
-            "key_id",
-            "private_key"
-          ],
           "type": "object"
         },
         "user_email": {
@@ -76,12 +63,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "auth",
-        "user_name",
-        "user_email",
-        "gpg"
-      ],
       "type": "object"
     },
     "hosts": {
@@ -112,11 +93,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "source",
-          "target",
-          "read_only"
-        ],
         "type": "object"
       },
       "type": "array"
@@ -126,14 +102,6 @@
       "type": "string"
     }
   },
-  "required": [
-    "listen_addr",
-    "default_image",
-    "ssh_public_key",
-    "mounts",
-    "hosts",
-    "git"
-  ],
   "title": "Config",
   "type": "object"
 }
