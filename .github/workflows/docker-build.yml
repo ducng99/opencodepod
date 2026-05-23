@@ -1,36 +1,44 @@
-name: Build and Push Server Docker Image
+name: Reusable Docker Build and Push
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - Dockerfile
-      - cmd/**
-      - internal/**
-      - frontend/**
-      - go.mod
-      - go.sum
-      - .github/workflows/docker-server.yml
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+      file:
+        required: true
+        type: string
+      tags:
+        required: true
+        type: string
+      build_frontend:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build-server:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Set up Bun
+        if: ${{ inputs.build_frontend }}
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Build frontend
+        if: ${{ inputs.build_frontend }}
         run: |
           cd frontend
           bun install
@@ -46,12 +54,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push server image
+      - name: Build and push image
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: Dockerfile
+          context: ${{ inputs.context }}
+          file: ${{ inputs.file }}
           push: true
-          tags: ghcr.io/ducng99/opencodepod-server:latest
+          tags: ${{ inputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

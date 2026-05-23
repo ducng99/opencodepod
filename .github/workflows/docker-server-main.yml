@@ -1,0 +1,31 @@
+name: Build and Push Server Docker Image (main)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - cmd/**
+      - internal/**
+      - frontend/**
+      - go.mod
+      - go.sum
+      - .github/workflows/docker-server-main.yml
+      - .github/workflows/docker-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-server:
+    uses: ducng99/opencodepod/.github/workflows/docker-build.yml@main
+    secrets: inherit
+    with:
+      image_name: opencodepod-server
+      context: .
+      file: Dockerfile
+      tags: ghcr.io/ducng99/opencodepod-server:main
+      build_frontend: true

@@ -1,0 +1,21 @@
+name: Build and Push Client Docker Image (release)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-client:
+    uses: ducng99/opencodepod/.github/workflows/docker-build.yml@main
+    secrets: inherit
+    with:
+      image_name: opencodepod-client
+      context: ./docker
+      file: ./docker/Dockerfile
+      tags: ghcr.io/ducng99/opencodepod-client:latest,ghcr.io/ducng99/opencodepod-client:${{ github.ref_name }}

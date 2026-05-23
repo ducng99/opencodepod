@@ -1,0 +1,25 @@
+name: Build and Push Client Docker Image (main)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docker/**
+      - .github/workflows/docker-client-main.yml
+      - .github/workflows/docker-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-client:
+    uses: ducng99/opencodepod/.github/workflows/docker-build.yml@main
+    secrets: inherit
+    with:
+      image_name: opencodepod-client
+      context: ./docker
+      file: ./docker/Dockerfile
+      tags: ghcr.io/ducng99/opencodepod-client:main

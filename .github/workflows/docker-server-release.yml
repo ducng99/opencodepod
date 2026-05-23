@@ -1,0 +1,22 @@
+name: Build and Push Server Docker Image (release)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-server:
+    uses: ducng99/opencodepod/.github/workflows/docker-build.yml@main
+    secrets: inherit
+    with:
+      image_name: opencodepod-server
+      context: .
+      file: Dockerfile
+      tags: ghcr.io/ducng99/opencodepod-server:latest,ghcr.io/ducng99/opencodepod-server:${{ github.ref_name }}
+      build_frontend: true
