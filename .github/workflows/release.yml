@@ -1,0 +1,118 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GO_VERSION: "1.26"
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build:
+    strategy:
+      matrix:
+        configs:
+          - goos: "linux"
+            goarch: "amd64"
+          - goos: "linux"
+            goarch: "arm64"
+          - goos: "windows"
+            goarch: "amd64"
+            ext: ".exe"
+          - goos: "windows"
+            goarch: "arm64"
+            ext: ".exe"
+          - goos: "darwin"
+            goarch: "amd64"
+          - goos: "darwin"
+            goarch: "arm64"
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    needs:
+      - test
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          bun install
+          bun run build
+
+      - name: Build
+        run: |
+          GOOS=${{ matrix.configs.goos }} GOARCH=${{ matrix.configs.goarch }} go build -v -o ./dist/opencodepod-server${{ matrix.configs.ext }} ./cmd/server
+
+      - name: Package zip
+        run: |
+          cd ./dist
+          zip -j opencodepod-server_${{ matrix.configs.goos }}_${{ matrix.configs.goarch }}.zip opencodepod-server${{ matrix.configs.ext }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: opencodepod-server_${{ matrix.configs.goos }}_${{ matrix.configs.goarch }}
+          path: ./dist/opencodepod-server_${{ matrix.configs.goos }}_${{ matrix.configs.goarch }}.zip
+          if-no-files-found: error
+
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-slim
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -v -l -s all
+        env:
+          OUTPUT: CHANGES.md
+
+  release:
+    needs:
+      - build
+      - changelog
+
+    runs-on: ubuntu-slim
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: ./dist/
+          pattern: "opencodepod-server_*"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: "${{ needs.changelog.outputs.release_body }}"
+          files: "dist/**/*.zip"
+          fail_on_unmatched_files: true
