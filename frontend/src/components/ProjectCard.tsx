@@ -24,6 +24,17 @@ export function ProjectCard({
   const [stopping, setStopping] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sshCopied, setSshCopied] = useState(false);
+
+  const copyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setSshCopied(true);
+      setTimeout(() => setSshCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   const h = host();
   const sshCmd = project.ssh_port ? `ssh -p ${project.ssh_port} coder@${h}` : "";
@@ -87,9 +98,27 @@ export function ProjectCard({
 
       <div className="space-y-2.5 text-sm">
         {sshCmd && (
-          <div className="flex items-center gap-2 text-oc-text-secondary">
+          <div className="flex items-center gap-2 text-oc-text-secondary group">
             <span className="text-xs font-semibold uppercase tracking-wider text-oc-text-muted w-8 shrink-0">SSH</span>
-            <code className="code-block truncate">{sshCmd}</code>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <code className="code-block truncate flex-1" title={sshCmd}>{sshCmd}</code>
+              <button
+                onClick={() => copyText(sshCmd)}
+                className="shrink-0 p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                title="Copy SSH command"
+              >
+                {sshCopied ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-oc-green">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         )}
         {webUrl && (
