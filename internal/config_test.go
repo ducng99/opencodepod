@@ -50,7 +50,7 @@ func TestLoadConfigFromJSON(t *testing.T) {
 		}
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestLoadConfigJSONPartial(t *testing.T) {
 		"listen_addr": ":7070"
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -108,7 +108,7 @@ func TestLoadConfigPlaceholderHappyPath(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "ssh_key.txt")
 
-	if err := os.WriteFile(keyPath, []byte("key-from-file"), 0644); err != nil {
+	if err := os.WriteFile(keyPath, []byte("key-from-file"), 0o644); err != nil {
 		t.Fatalf("write key file: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestLoadConfigPlaceholderHappyPath(t *testing.T) {
 		"ssh_public_key": "{file:ssh_key.txt}"
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -139,7 +139,7 @@ func TestLoadConfigPlaceholderMissingFile(t *testing.T) {
 		"ssh_public_key": "{file:missing_key.txt}"
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestLoadConfigPlaceholderNestedStruct(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "git_key.txt")
 
-	if err := os.WriteFile(keyPath, []byte("git-key-content"), 0644); err != nil {
+	if err := os.WriteFile(keyPath, []byte("git-key-content"), 0o644); err != nil {
 		t.Fatalf("write key file: %v", err)
 	}
 
@@ -167,7 +167,7 @@ func TestLoadConfigPlaceholderNestedStruct(t *testing.T) {
 		}
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -187,7 +187,7 @@ func TestLoadConfigPlaceholderSlice(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	mountSourcePath := filepath.Join(dir, "mount_source.txt")
 
-	if err := os.WriteFile(mountSourcePath, []byte("/host/path"), 0644); err != nil {
+	if err := os.WriteFile(mountSourcePath, []byte("/host/path"), 0o644); err != nil {
 		t.Fatalf("write mount source file: %v", err)
 	}
 
@@ -197,7 +197,7 @@ func TestLoadConfigPlaceholderSlice(t *testing.T) {
 		]
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -223,7 +223,7 @@ func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	keyPath := filepath.Join(dir, "ssh_key.txt")
 
-	if err := os.WriteFile(keyPath, []byte("abs-path-key"), 0644); err != nil {
+	if err := os.WriteFile(keyPath, []byte("abs-path-key"), 0o644); err != nil {
 		t.Fatalf("write key file: %v", err)
 	}
 
@@ -231,7 +231,7 @@ func TestLoadConfigPlaceholderAbsolutePath(t *testing.T) {
 		"ssh_public_key": "{file:` + filepath.ToSlash(keyPath) + `}"
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -257,7 +257,7 @@ func TestLoadConfigHosts(t *testing.T) {
 		}
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -284,7 +284,7 @@ func TestLoadConfigHostsEmpty(t *testing.T) {
 
 	content := `{}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
@@ -321,7 +321,7 @@ func TestLoadConfigCredentials(t *testing.T) {
 		}
 	}`
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 

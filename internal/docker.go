@@ -509,7 +509,7 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 	content := []byte(dm.cfg.Git.Auth.SSHKey)
 	hdr := &tar.Header{
 		Name: filepath.Base(dm.cfg.Git.Auth.SSHKeyPath),
-		Mode: 0600,
+		Mode: 0o600,
 		Size: int64(len(content)),
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
@@ -536,7 +536,7 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 	content := []byte(dm.cfg.Git.GPG.PrivateKey)
 	hdr := &tar.Header{
 		Name: ".gnupg/private.key",
-		Mode: 0600,
+		Mode: 0o600,
 		Size: int64(len(content)),
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
@@ -569,7 +569,7 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 
 	hdr := &tar.Header{
 		Name: ".git-credentials",
-		Mode: 0600,
+		Mode: 0o600,
 		Size: int64(content.Len()),
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
