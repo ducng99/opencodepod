@@ -37,6 +37,10 @@ type CreateRequest struct {
 	Image   string `json:"image,omitempty"`
 }
 
+type UpdateRequest struct {
+	Name string `json:"name"`
+}
+
 func LabelsFromProject(p *Project) map[string]string {
 	return map[string]string{
 		LabelManaged:   "true",

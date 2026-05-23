@@ -20,6 +20,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/projects", s.handleList)
 	mux.HandleFunc("POST /api/projects", s.handleCreate)
 	mux.HandleFunc("GET /api/projects/{id}", s.handleGet)
+	mux.HandleFunc("PATCH /api/projects/{id}", s.handleUpdate)
 	mux.HandleFunc("POST /api/projects/{id}/start", s.handleStart)
 	mux.HandleFunc("POST /api/projects/{id}/stop", s.handleStop)
 	mux.HandleFunc("POST /api/projects/{id}/upgrade", s.handleUpgrade)
@@ -58,6 +59,29 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	project, err := s.docker.GetProject(r.Context(), id)
 	if err != nil {
 		s.writeError(w, http.StatusNotFound, err)
+		return
+	}
+	s.writeJSON(w, http.StatusOK, project)
+}
+
+func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req UpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		s.writeError(w, http.StatusBadRequest, fmt.Errorf("name is required"))
+		return
+	}
+	project, err := s.docker.RenameProject(r.Context(), id, &req)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			s.writeError(w, http.StatusNotFound, err)
+			return
+		}
+		s.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	s.writeJSON(w, http.StatusOK, project)

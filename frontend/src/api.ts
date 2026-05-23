@@ -1,4 +1,4 @@
-import { Project, CreateRequest } from "./types";
+import { Project, CreateRequest, UpdateRequest } from "./types";
 
 const API_BASE = "/api";
 
@@ -18,6 +18,14 @@ export function listProjects() {
 export function createProject(body: CreateRequest) {
   return api<Project>("/projects", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateProject(id: string, body: UpdateRequest) {
+  return api<Project>(`/projects/${id}`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

@@ -3,6 +3,7 @@ import { Project } from "./types";
 import {
   listProjects,
   createProject,
+  updateProject,
   startProject,
   stopProject,
   deleteProject,
@@ -59,6 +60,11 @@ export function App() {
   const handleUpgrade = async (id: string) => {
     if (!confirm("Upgrade will pull the latest image and recreate the container. Only /workspaces will be kept; all other data will be removed. Continue?")) return;
     await upgradeProject(id);
+    await refresh();
+  };
+
+  const handleUpdate = async (id: string, name: string) => {
+    await updateProject(id, { name });
     await refresh();
   };
 
@@ -153,6 +159,7 @@ export function App() {
                 onStop={handleStop}
                 onUpgrade={handleUpgrade}
                 onDelete={handleDelete}
+                onUpdate={handleUpdate}
               />
             ))}
           </div>

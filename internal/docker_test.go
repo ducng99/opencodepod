@@ -870,6 +870,57 @@ func TestDockerManager_UpgradeProject(t *testing.T) {
 	}
 }
 
+func TestDockerManager_RenameProject(t *testing.T) {
+	t.Parallel()
+	dm := requireDocker(t)
+	ctx := context.Background()
+
+	req := &CreateRequest{Name: "test-rename"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer cleanupTestProject(t, dm, p.ID)
+
+	renamed, err := dm.RenameProject(ctx, p.ID, &UpdateRequest{Name: "renamed-project"})
+	if err != nil {
+		t.Fatalf("RenameProject failed: %v", err)
+	}
+	if renamed.Name != "renamed-project" {
+		t.Errorf("expected name renamed-project, got %s", renamed.Name)
+	}
+	if renamed.ID != p.ID {
+		t.Errorf("expected id %s, got %s", p.ID, renamed.ID)
+	}
+	if renamed.Status != "running" {
+		t.Errorf("expected running status after rename, got %s", renamed.Status)
+	}
+
+	// Verify container label was updated
+	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatalf("container inspect failed: %v", err)
+	}
+	inspect := inspectResult.Container
+	if inspect.Config.Labels[LabelName] != "renamed-project" {
+		t.Errorf("expected container label project.name=renamed-project, got %s", inspect.Config.Labels[LabelName])
+	}
+}
+
+func TestDockerManager_RenameProject_NotFound(t *testing.T) {
+	t.Parallel()
+	dm := requireDocker(t)
+	ctx := context.Background()
+
+	_, err := dm.RenameProject(ctx, "nonexistent-id", &UpdateRequest{Name: "new-name"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent project")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' in error, got: %v", err)
+	}
+}
+
 func TestDockerManager_UpgradeProject_NotFound(t *testing.T) {
 	t.Parallel()
 	dm := requireDocker(t)

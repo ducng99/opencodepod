@@ -14,3 +14,7 @@ export interface CreateRequest {
   git_repo?: string;
   image?: string;
 }
+
+export interface UpdateRequest {
+  name: string;
+}

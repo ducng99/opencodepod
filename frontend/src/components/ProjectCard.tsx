@@ -13,18 +13,23 @@ export function ProjectCard({
   onStop,
   onUpgrade,
   onDelete,
+  onUpdate,
 }: {
   project: Project;
   onStart: (id: string) => Promise<void>;
   onStop: (id: string) => Promise<void>;
   onUpgrade: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpdate: (id: string, name: string) => Promise<void>;
 }) {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sshCopied, setSshCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(project.name);
+  const [saving, setSaving] = useState(false);
 
   const copyText = async (text: string) => {
     try {
@@ -76,13 +81,98 @@ export function ProjectCard({
     }
   };
 
+  const handleSave = async () => {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === project.name) {
+      setEditing(false);
+      setEditName(project.name);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onUpdate(project.id, trimmed);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setEditName(project.name);
+  };
+
   return (
     <div className="card-glow p-5 flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-oc-text tracking-tight truncate">
-            {project.name || "Untitled"}
-          </h3>
+          {editing ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSave();
+                  } else if (e.key === "Escape") {
+                    handleCancel();
+                  }
+                }}
+                disabled={saving}
+                autoFocus
+                className={`flex-1 min-w-0 text-base font-semibold text-oc-text bg-white/[0.04] border border-white/[0.12] rounded-lg px-2.5 py-1 focus:outline-none focus:border-oc-accent/50 transition-colors truncate ${saving ? "opacity-50" : ""}`}
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="shrink-0 p-1.5 rounded-lg bg-oc-green/10 hover:bg-oc-green/20 text-oc-green border border-oc-green/20 transition-all duration-200"
+                title="Save"
+              >
+                {saving ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="shrink-0 p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-oc-text-muted border border-white/[0.08] transition-all duration-200"
+                title="Cancel"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-1 min-w-0 group/name">
+              <h3
+                className="text-base font-semibold text-oc-text tracking-tight truncate cursor-pointer hover:text-oc-accent transition-colors"
+                onClick={() => setEditing(true)}
+                title="Click to rename"
+              >
+                {project.name || "Untitled"}
+              </h3>
+              <button
+                onClick={() => setEditing(true)}
+                className="shrink-0 p-1 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200 opacity-0 group-hover/name:opacity-100"
+                title="Rename"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-oc-text-muted">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
+          )}
           <Badge status={project.status} />
         </div>
         <div className="text-xs text-oc-text-muted flex items-center gap-2 font-mono">

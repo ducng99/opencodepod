@@ -313,6 +313,88 @@ func TestHandleUpgrade(t *testing.T) {
 	}
 }
 
+func TestHandleUpdate(t *testing.T) {
+	t.Parallel()
+	server, dm := setupTestServer(t)
+	defer cleanupOrphaned(t, dm)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	// Create a project first
+	reqBody, _ := json.Marshal(CreateRequest{Name: "update-test"})
+	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("setup create failed: %d %s", createRec.Code, createRec.Body.String())
+	}
+	var created Project
+	_ = json.Unmarshal(createRec.Body.Bytes(), &created)
+	defer cleanupTestProject(t, dm, created.ID)
+
+	// Update name
+	updateBody, _ := json.Marshal(UpdateRequest{Name: "updated-name"})
+	updateReq := httptest.NewRequest("PATCH", "/api/projects/"+created.ID, bytes.NewReader(updateBody))
+	updateRec := httptest.NewRecorder()
+	mux.ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("update failed: %d %s", updateRec.Code, updateRec.Body.String())
+	}
+
+	var updated Project
+	if err := json.Unmarshal(updateRec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if updated.ID != created.ID {
+		t.Errorf("expected id %s, got %s", created.ID, updated.ID)
+	}
+	if updated.Name != "updated-name" {
+		t.Errorf("expected name updated-name, got %s", updated.Name)
+	}
+}
+
+func TestHandleUpdate_BadRequest(t *testing.T) {
+	t.Parallel()
+	server, dm := setupTestServer(t)
+	defer cleanupOrphaned(t, dm)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	// Empty name
+	reqBody, _ := json.Marshal(UpdateRequest{Name: "   "})
+	req := httptest.NewRequest("PATCH", "/api/projects/some-id", bytes.NewReader(reqBody))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected bad request, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "required") {
+		t.Errorf("expected 'required' in error, got %s", rec.Body.String())
+	}
+}
+
+func TestHandleUpdate_NotFound(t *testing.T) {
+	t.Parallel()
+	server, dm := setupTestServer(t)
+	defer cleanupOrphaned(t, dm)
+
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	updateBody, _ := json.Marshal(UpdateRequest{Name: "new-name"})
+	updateReq := httptest.NewRequest("PATCH", "/api/projects/nonexistent-id", bytes.NewReader(updateBody))
+	updateRec := httptest.NewRecorder()
+	mux.ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for nonexistent project, got %d", updateRec.Code)
+	}
+}
+
 func TestHandleUpgrade_NotFound(t *testing.T) {
 	t.Parallel()
 	server, dm := setupTestServer(t)

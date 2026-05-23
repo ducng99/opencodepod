@@ -283,6 +283,102 @@ func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, 
 	return dm.GetProject(ctx, id)
 }
 
+func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *UpdateRequest) (*Project, error) {
+	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		if errors.Is(err, errdefs.ErrNotFound) {
+			return nil, fmt.Errorf("project not found: %s", id)
+		}
+		return nil, err
+	}
+	inspect := inspectResult.Container
+
+	labels := make(map[string]string, len(inspect.Config.Labels))
+	for k, v := range inspect.Config.Labels {
+		labels[k] = v
+	}
+	labels[LabelName] = req.Name
+
+	if inspect.State.Status == "running" {
+		if _, err := dm.client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
+			return nil, fmt.Errorf("stop: %w", err)
+		}
+	}
+
+	if _, err := dm.client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+		return nil, fmt.Errorf("remove old container: %w", err)
+	}
+
+	containerConfig := &container.Config{
+		Image:        inspect.Config.Image,
+		Labels:       labels,
+		ExposedPorts: inspect.Config.ExposedPorts,
+		Env:          inspect.Config.Env,
+	}
+
+	hostConfig := &container.HostConfig{
+		PortBindings:  inspect.HostConfig.PortBindings,
+		Binds:         inspect.HostConfig.Binds,
+		ExtraHosts:    inspect.HostConfig.ExtraHosts,
+		RestartPolicy: inspect.HostConfig.RestartPolicy,
+	}
+
+	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+		Config:     containerConfig,
+		HostConfig: hostConfig,
+		Name:       ContainerName(id),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("container create: %w", err)
+	}
+
+	if dm.cfg.Git.Auth.SSHKey != "" {
+		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy git ssh key: %w", err)
+		}
+	}
+
+	if dm.cfg.Git.GPG.PrivateKey != "" {
+		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy gpg key: %w", err)
+		}
+	}
+
+	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
+			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy git credentials: %w", err)
+		}
+	}
+
+	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+		return nil, fmt.Errorf("container start: %w", err)
+	}
+
+	inspectResult, err = dm.client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("container inspect: %w", err)
+	}
+	inspect = inspectResult.Container
+
+	p := ProjectFromLabels(id, inspect.Config.Labels)
+	p.Image = inspect.Config.Image
+	p.Volumes = ProjectVolumes(id)
+
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
+	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
+	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
+
+	return p, nil
+}
+
 func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Project, error) {
 	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
 	if err != nil {
