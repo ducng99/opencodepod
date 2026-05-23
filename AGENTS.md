@@ -23,27 +23,29 @@ go build -o opencodepod-server ./cmd/server
 
 No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 
+**Frontend build details**: Custom `frontend/build.ts` script — `bun build` bundles JS/TSX, `tailwindcss` CLI compiles CSS, then copies `index.html` into `dist/`.
+
 ## Testing
 
 ```bash
-# Run all tests
+# Run all tests (long timeout recommended — container pulls are slow)
 go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
 ```
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)
-- `skipIfNoDocker()` helper skips the entire Docker suite if daemon is unreachable
 - Tests create real containers/volumes and clean them up via `cleanupTestProject()`
 - Most tests are marked `t.Parallel()` for concurrent execution; adjust `-parallel` to match your CPU cores
-- Long timeout recommended: container pulls and start/stop cycles are slow
+- CI order: build frontend → `go vet ./...` → test
 
 ## Key Conventions
 
-- **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>`. Never look up by name; always by label.
+- **Naming**: containers `cp-<id>`, volumes `cp-vol-<id>` and `cp-vol-<id>-home`. Never look up by name; always by label.
 - **Ports**: Docker assigns random host ports for `22/tcp` and `8080/tcp`. Captured via `ContainerInspect` after start.
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
 - **Config**: loaded from `config.json` with JSON keys in snake_case (`listen_addr`, `default_image`, etc.). Missing fields fall back to hard-coded defaults.
+- **File placeholders**: config fields support `{file:<host_path>}` syntax — the file content is inlined at load time. Relative paths resolve against `config.json`'s directory.
 - **Schema**: whenever `internal/config.go` structs or their `desc` tags change, regenerate `config.schema.json` with `go run ./cmd/generate-schema`.
-- **Git auth**: `git.auth.ssh_key` (inline private key) is copied into containers via `CopyToContainer` before start, never as an env var. `git.auth.ssh_key_path` (default `/home/coder/.ssh/id_ed25519`) controls the destination inside the container.
+- **Git auth**: `git.auth.ssh_key` (inline private key or `{file:...}`) is copied into containers via `CopyToContainer` before start, never as an env var. `git.auth.ssh_key_path` (default `/home/coder/.ssh/id_ed25519`) controls the destination inside the container.
 
 ## Frontend
 
@@ -66,5 +68,4 @@ React 19 + TypeScript + Tailwind CSS v4, built with Bun.
 
 - Don't add a database for project state — query Docker live on every request
 - Don't expose the Docker socket over TCP — mount read-only UNIX socket or skip Docker calls entirely
-- Don't run Tailscale inside containers — it runs only on the host; containers bind `0.0.0.0`
 - Don't chase 100% coverage — integration tests cover the Docker lifecycle; unit tests cover parsing and domain logic
