@@ -738,10 +738,9 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	}
 	env := []string{"GIT_GPG_KEY_ID=TESTKEY123"}
 
-	volumeTargets := []string{"/workspaces", "/home/coder/.local/share/opencode"}
 	binds := make([]string, 0, len(p.Volumes))
-	for i, vol := range p.Volumes {
-		binds = append(binds, fmt.Sprintf("%s:%s", vol, volumeTargets[i]))
+	for _, mount := range ProjectVolumeMounts(p.ID) {
+		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	extraHosts := []string{"host.docker.internal:host-gateway"}
 

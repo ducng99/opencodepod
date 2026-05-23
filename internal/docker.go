@@ -162,11 +162,9 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		Env:          env,
 	}
 
-	volumeTargets := []string{"/workspaces", "/home/coder/.local/share/opencode"}
-
 	binds := make([]string, 0, len(p.Volumes)+len(dm.cfg.Mounts))
-	for i, vol := range p.Volumes {
-		binds = append(binds, fmt.Sprintf("%s:%s", vol, volumeTargets[i]))
+	for _, mount := range ProjectVolumeMounts(p.ID) {
+		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	for _, m := range dm.cfg.Mounts {
 		if m.Source == "" || m.Target == "" {

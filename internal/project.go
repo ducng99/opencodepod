@@ -26,6 +26,11 @@ type Project struct {
 	Image   string   `json:"image"`
 }
 
+type VolumeMount struct {
+	Name   string `json:"name"`
+	Target string `json:"target"`
+}
+
 type CreateRequest struct {
 	Name    string `json:"name"`
 	GitRepo string `json:"git_repo,omitempty"`
@@ -52,8 +57,20 @@ func ProjectFromLabels(id string, labels map[string]string) *Project {
 	}
 }
 
+func ProjectVolumeMounts(id string) []VolumeMount {
+	return []VolumeMount{
+		{Name: VolumeName(id), Target: "/workspaces"},
+		{Name: HomeVolumeName(id), Target: "/home/coder/.local/share/opencode"},
+	}
+}
+
 func ProjectVolumes(id string) []string {
-	return []string{VolumeName(id), HomeVolumeName(id)}
+	mounts := ProjectVolumeMounts(id)
+	names := make([]string, len(mounts))
+	for i, m := range mounts {
+		names[i] = m.Name
+	}
+	return names
 }
 
 func VolumeName(id string) string {
