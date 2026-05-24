@@ -118,8 +118,6 @@ services:
 
 ### Cloning private repositories
 
-Pass a `git_repo` URL when creating a project. On first boot the container clones it into `/workspaces/<repo-name>`.
-
 **SSH key authentication**
 
 Set `git.auth.ssh_key` in `config.json` to your SSH private key. It is copied into containers automatically before startup. The default path inside the container is `/home/coder/.ssh/id_ed25519`; change it with `git.auth.ssh_key_path` if needed.
@@ -138,7 +136,7 @@ For HTTPS repositories, set `git.auth.credentials` with host-keyed username/pass
     "credentials": {
       "github.com": {
         "username": "myuser",
-        "password": "github_ghp_xxx"
+        "password": "github_ghp_xxx" // or "{file:/app/github_pat.key}" to inline the file content
       }
     }
   }

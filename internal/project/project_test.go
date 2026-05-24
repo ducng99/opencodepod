@@ -7,10 +7,10 @@ import (
 func TestLabelsFromProject(t *testing.T) {
 	t.Parallel()
 	p := &Project{
-		ID:      "abc123",
-		Name:    "myproject",
-		GitRepo: "https://github.com/user/repo",
-		Image:   "custom-opencode:latest",
+		ID:    "abc123",
+		Name:  "myproject",
+		Git:   Git{Repo: "https://github.com/user/repo"},
+		Image: "custom-opencode:latest",
 	}
 	labels := LabelsFromProject(p)
 	if labels[LabelManaged] != "true" {
@@ -45,8 +45,8 @@ func TestProjectFromLabels(t *testing.T) {
 	if p.Name != "test" {
 		t.Errorf("expected name test, got %s", p.Name)
 	}
-	if p.GitRepo != "git@host:org/repo.git" {
-		t.Errorf("expected git_repo, got %s", p.GitRepo)
+	if p.Git.Repo != "git@host:org/repo.git" {
+		t.Errorf("expected git repo, got %s", p.Git.Repo)
 	}
 	if p.Image != "img:v2" {
 		t.Errorf("expected image img:v2, got %s", p.Image)

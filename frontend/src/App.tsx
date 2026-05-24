@@ -47,10 +47,15 @@ export function App() {
   ) => {
     await createProject({
       name,
-      git_repo: gitRepo || undefined,
+      git:
+        gitRepo || branch || depth
+          ? {
+              repo: gitRepo || undefined,
+              branch: branch || undefined,
+              depth,
+            }
+          : undefined,
       image: image || undefined,
-      git_branch: branch || undefined,
-      git_depth: depth,
     });
     await refresh();
   };

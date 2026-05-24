@@ -21,14 +21,12 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	}
 
 	p := &project.Project{
-		ID:        id,
-		Name:      req.Name,
-		GitRepo:   req.GitRepo,
-		GitBranch: req.GitBranch,
-		GitDepth:  req.GitDepth,
-		Image:     image,
-		Volumes:   project.ProjectVolumes(id),
-		Status:    "creating",
+		ID:      id,
+		Name:    req.Name,
+		Git:     project.Git{Repo: req.Git.Repo, Branch: req.Git.Branch, Depth: req.Git.Depth},
+		Image:   image,
+		Volumes: project.ProjectVolumes(id),
+		Status:  "creating",
 	}
 
 	for _, vol := range p.Volumes {
@@ -76,9 +74,9 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	}
 
 	env := []string{}
-	env = appendEnv(env, "GIT_REPO", req.GitRepo)
-	env = appendEnv(env, "GIT_BRANCH", req.GitBranch)
-	env = appendEnvInt(env, "GIT_DEPTH", req.GitDepth)
+	env = appendEnv(env, "GIT_REPO", req.Git.Repo)
+	env = appendEnv(env, "GIT_BRANCH", req.Git.Branch)
+	env = appendEnvInt(env, "GIT_DEPTH", req.Git.Depth)
 	env = appendEnv(env, "SSH_PUBLIC_KEY", dm.Cfg.SSHPublicKey)
 	env = appendEnv(env, "GIT_USER_NAME", dm.Cfg.Git.UserName)
 	env = appendEnv(env, "GIT_USER_EMAIL", dm.Cfg.Git.UserEmail)

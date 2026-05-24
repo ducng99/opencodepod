@@ -17,17 +17,21 @@ const (
 	LabelImage     = "opencodepod.project.image"
 )
 
+type Git struct {
+	Repo   string `json:"repo,omitempty"`
+	Branch string `json:"branch,omitempty"`
+	Depth  int    `json:"depth,omitempty"`
+}
+
 type Project struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	GitRepo   string   `json:"git_repo,omitempty"`
-	GitBranch string   `json:"git_branch,omitempty"`
-	GitDepth  int      `json:"git_depth,omitempty"`
-	Status    string   `json:"status"`
-	SSHPort   int      `json:"ssh_port"`
-	WebPort   int      `json:"web_port"`
-	Volumes   []string `json:"volumes"`
-	Image     string   `json:"image"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Git     Git      `json:"git"`
+	Status  string   `json:"status"`
+	SSHPort int      `json:"ssh_port"`
+	WebPort int      `json:"web_port"`
+	Volumes []string `json:"volumes"`
+	Image   string   `json:"image"`
 }
 
 type VolumeMount struct {
@@ -36,11 +40,9 @@ type VolumeMount struct {
 }
 
 type CreateRequest struct {
-	Name      string `json:"name"`
-	GitRepo   string `json:"git_repo,omitempty"`
-	GitBranch string `json:"git_branch,omitempty"`
-	GitDepth  int    `json:"git_depth,omitempty"`
-	Image     string `json:"image,omitempty"`
+	Name  string `json:"name"`
+	Git   Git    `json:"git"`
+	Image string `json:"image,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -52,27 +54,26 @@ func LabelsFromProject(p *Project) map[string]string {
 		LabelManaged:   "true",
 		LabelProjectID: p.ID,
 		LabelName:      p.Name,
-		LabelGitRepo:   p.GitRepo,
-		LabelGitBranch: p.GitBranch,
+		LabelGitRepo:   p.Git.Repo,
+		LabelGitBranch: p.Git.Branch,
 		LabelImage:     p.Image,
 	}
-	if p.GitDepth > 0 {
-		labels[LabelGitDepth] = strconv.Itoa(p.GitDepth)
+	if p.Git.Depth > 0 {
+		labels[LabelGitDepth] = strconv.Itoa(p.Git.Depth)
 	}
 	return labels
 }
 
 func ProjectFromLabels(id string, labels map[string]string) *Project {
 	p := &Project{
-		ID:        id,
-		Name:      labels[LabelName],
-		GitRepo:   labels[LabelGitRepo],
-		GitBranch: labels[LabelGitBranch],
-		Image:     labels[LabelImage],
-		Volumes:   ProjectVolumes(id),
+		ID:      id,
+		Name:    labels[LabelName],
+		Git:     Git{Repo: labels[LabelGitRepo], Branch: labels[LabelGitBranch]},
+		Image:   labels[LabelImage],
+		Volumes: ProjectVolumes(id),
 	}
 	if d, err := strconv.Atoi(labels[LabelGitDepth]); err == nil {
-		p.GitDepth = d
+		p.Git.Depth = d
 	}
 	return p
 }

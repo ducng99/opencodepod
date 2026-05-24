@@ -1,7 +1,13 @@
+export interface Git {
+  repo?: string;
+  branch?: string;
+  depth?: number;
+}
+
 export interface Project {
   id: string;
   name: string;
-  git_repo?: string;
+  git?: Git;
   status: string;
   ssh_port: number;
   web_port: number;
@@ -11,10 +17,8 @@ export interface Project {
 
 export interface CreateRequest {
   name: string;
-  git_repo?: string;
+  git?: Git;
   image?: string;
-  git_branch?: string;
-  git_depth?: number;
 }
 
 export interface UpdateRequest {

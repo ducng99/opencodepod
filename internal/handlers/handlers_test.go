@@ -79,7 +79,7 @@ func TestHandleCreate(t *testing.T) {
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
-	reqBody, _ := json.Marshal(project.CreateRequest{Name: "create-test", GitRepo: "https://github.com/user/repo"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "create-test", Git: project.Git{Repo: "https://github.com/user/repo"}})
 	req := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -98,8 +98,8 @@ func TestHandleCreate(t *testing.T) {
 	if p.Name != "create-test" {
 		t.Errorf("expected name create-test, got %s", p.Name)
 	}
-	if p.GitRepo != "https://github.com/user/repo" {
-		t.Errorf("expected git repo, got %s", p.GitRepo)
+	if p.Git.Repo != "https://github.com/user/repo" {
+		t.Errorf("expected git repo, got %s", p.Git.Repo)
 	}
 	defer utils.CleanupTestProject(t, dm, p.ID)
 }
