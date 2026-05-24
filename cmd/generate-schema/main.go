@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strings"
 
 	"opencodepod/internal/config"
 )
@@ -83,7 +82,7 @@ func generateSchema(t reflect.Type) map[string]any {
 			}
 			properties[name] = fieldSchema
 
-			if field.Type.Kind() != reflect.Ptr && !strings.Contains(jsonTag, ",omitempty") {
+			if field.Tag.Get("required") == "true" {
 				required = append(required, name)
 			}
 		}
