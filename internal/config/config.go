@@ -92,7 +92,7 @@ func loadConfigFrom(path string) (*Config, error) {
 
 func expandPlaceholders(v any, configDir string) error {
 	rv := reflect.ValueOf(v)
-	for rv.Kind() == reflect.Ptr {
+	for rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
 	}
 	return expandValue(rv, configDir)
@@ -114,8 +114,8 @@ func expandValue(v reflect.Value, configDir string) error {
 			v.SetString(strings.TrimSpace(string(content)))
 		}
 	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			if err := expandValue(v.Field(i), configDir); err != nil {
+		for _, field := range v.Fields() {
+			if err := expandValue(field, configDir); err != nil {
 				return err
 			}
 		}
@@ -138,7 +138,7 @@ func expandValue(v reflect.Value, configDir string) error {
 			}
 			v.SetMapIndex(key, copyVal)
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if !v.IsNil() {
 			if err := expandValue(v.Elem(), configDir); err != nil {
 				return err
