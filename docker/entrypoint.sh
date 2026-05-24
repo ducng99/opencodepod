@@ -84,7 +84,15 @@ if [ -n "$GIT_REPO" ]; then
 
   if [ ! -d "$REPO_DIR/.git" ]; then
     echo "Cloning $GIT_REPO into $REPO_DIR ..."
-    git clone "$GIT_REPO" "$REPO_DIR"
+    CLONE_ARGS=""
+    if [ -n "$GIT_BRANCH" ]; then
+      CLONE_ARGS="$CLONE_ARGS --branch $GIT_BRANCH"
+    fi
+    if [ -n "$GIT_DEPTH" ]; then
+      CLONE_ARGS="$CLONE_ARGS --depth $GIT_DEPTH"
+    fi
+    # shellcheck disable=SC2086
+    git clone $CLONE_ARGS "$GIT_REPO" "$REPO_DIR"
     echo "Clone complete."
   else
     echo "$REPO_NAME already cloned, skipping clone."
