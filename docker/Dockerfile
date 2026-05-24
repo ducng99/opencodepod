@@ -22,7 +22,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     unzip \
     zip \
     jq \
-    ripgrep
+    ripgrep \
+    zsh
 
 # Generate SSH host keys and harden sshd config
 RUN ssh-keygen -A \
@@ -51,7 +52,7 @@ RUN GO_VERSION=$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -n 1 | sed 's
     && rm /tmp/go.tar.gz
 
 # Create user 'coder' with home directory and passwordless sudo
-RUN useradd -m -s /bin/bash coder \
+RUN useradd -m -s /bin/zsh coder \
     && usermod -aG sudo coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder
@@ -63,6 +64,13 @@ RUN mkdir -p /workspaces \
 # Install opencode as user 'coder'
 USER coder
 ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
+
+# Install Oh My Zsh and plugins
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
+    && git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions \
+    && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting \
+    && sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc \
+    && echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 RUN curl -fsSL https://bun.sh/install | bash

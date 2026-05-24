@@ -7,13 +7,13 @@ This is the isolated Docker workspace for a coding agent. You have full sudo acc
 - **OS**: Ubuntu LTS latest
 - **User**: `coder` (UID auto-assigned, home `/home/coder`)
 - **Sudo**: passwordless — `sudo apt-get install ...` works without prompts
-- **Shell**: Bash
+- **Shell**: Zsh (with Oh My Zsh)
 - **Workspace**: `/workspaces` (owned by `coder`)
 
 ## Pre-installed Tools
 
 Some core build/runtime stack:
-- `git`, `curl`, `wget`, `build-essential`
+- `git`, `curl`, `wget`, `build-essential`, `zsh`
 - `uv` (Astral's Python toolchain)
 - `nodejs` (via apt — may be an older LTS)
 - `unzip`, `zip`, `jq`, `htop`, `tree`, `ripgrep`
