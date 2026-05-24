@@ -59,7 +59,7 @@ Note: The content will be trimmed for both prefix and suffix.
 | `git.user_email` | string | *(empty)* | Git commit author email. |
 | `git.gpg.key_id` | string | *(empty)* | GPG key ID used for commit signing. |
 | `git.gpg.private_key` | string | *(empty)* | Inline GPG private key for signing commits. |
-| `git.gpg.passphrase_path` | string | *(empty)* | Container path to the mounted passphrase file for the GPG private key. The host file must be mounted via `mounts` so `git commit -S` can run non-interactively. |
+| `git.gpg.passphrase` | string | *(empty)* | Passphrase for the GPG private key. Copied into containers so `git commit -S` can run non-interactively. |
 
 ### Example `config.json`
 
@@ -99,7 +99,7 @@ Note: The content will be trimmed for both prefix and suffix.
     "gpg": {
       "key_id": "A1B2C3D4E5F6",
       "private_key": "{file:<host_path_to_gpg_key>}",
-      "passphrase_path": "/home/coder/.gnupg/gpg_passphrase.key"
+      "passphrase": "{file:<host_path_to_gpg_passphrase>}"
     }
   }
 }
@@ -150,8 +150,6 @@ Git credential helper is configured automatically so clones proceed without prom
 ### GPG signing
 
 To sign commits inside containers, set `git.gpg.key_id` and `git.gpg.private_key` in `config.json`.
-
-If your GPG key requires a passphrase, mount the passphrase file into the container via `mounts` and set `git.gpg.passphrase_path` to the container-side path (e.g. `/home/coder/.gnupg/gpg_passphrase.key`).
 
 You can export your GPG with
 
