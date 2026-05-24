@@ -36,11 +36,13 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 		return nil, err
 	}
 
+	p := project.ProjectFromLabels(id, inspect.Config.Labels)
+
 	containerConfig := &container.Config{
 		Image:        image,
 		Labels:       inspect.Config.Labels,
 		ExposedPorts: inspect.Config.ExposedPorts,
-		Env:          inspect.Config.Env,
+		Env:          dm.buildEnv(p),
 	}
 
 	hostConfig := &container.HostConfig{
@@ -73,7 +75,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 	}
 	inspect = inspectResult.Container
 
-	p := project.ProjectFromLabels(id, inspect.Config.Labels)
+	p = project.ProjectFromLabels(id, inspect.Config.Labels)
 	p.Image = image
 	p.Volumes = project.ProjectVolumes(id)
 

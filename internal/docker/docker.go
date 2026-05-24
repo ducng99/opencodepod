@@ -227,6 +227,19 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".git-credentials", content.Bytes())
 }
 
+func (dm *DockerManager) buildEnv(p *project.Project) []string {
+	env := []string{}
+	env = appendEnv(env, "GIT_REPO", p.Git.Repo)
+	env = appendEnv(env, "GIT_BRANCH", p.Git.Branch)
+	env = appendEnvInt(env, "GIT_DEPTH", p.Git.Depth)
+	env = appendEnv(env, "SSH_PUBLIC_KEY", dm.Cfg.SSHPublicKey)
+	env = appendEnv(env, "GIT_USER_NAME", dm.Cfg.Git.UserName)
+	env = appendEnv(env, "GIT_USER_EMAIL", dm.Cfg.Git.UserEmail)
+	env = appendEnv(env, "GIT_GPG_KEY_ID", dm.Cfg.Git.GPG.KeyID)
+	env = appendEnv(env, "GPG_PASSPHRASE_PATH", dm.Cfg.Git.GPG.PassphrasePath)
+	return env
+}
+
 func (dm *DockerManager) buildBinds(id string) []string {
 	binds := make([]string, 0, len(project.ProjectVolumeMounts(id))+len(dm.Cfg.Mounts))
 	for _, mount := range project.ProjectVolumeMounts(id) {
