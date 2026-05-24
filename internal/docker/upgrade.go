@@ -18,12 +18,6 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 	}
 	image := inspect.Config.Image
 
-	// Capture the container's actual image ID so we can tell whether the pull
-	// actually changed anything. We must use inspect.Image (the ID the container
-	// was created from) rather than ImageInspect by tag, because the local tag
-	// may already point to a newer image while the container still runs the old one.
-	oldImageID := inspect.Image
-
 	// Pull the latest image. The daemon streams JSON progress messages; we must
 	// drain the entire body so the HTTP connection completes and the pull finishes.
 	pr, err := dm.Client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
@@ -31,23 +25,13 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 		_, _ = io.Copy(io.Discard, pr)
 		_ = pr.Close()
 	} else {
-		if oldImageID == "" {
+		if _, inspectErr := dm.Client.ImageInspect(ctx, image); inspectErr != nil {
 			return nil, fmt.Errorf("image pull failed and no local image found: %w", err)
 		}
-		return nil, fmt.Errorf("image pull failed; container was not upgraded because no newer image could be retrieved: %w", err)
 	}
 
-	// Check whether the image actually changed.
-	newInspect, err := dm.Client.ImageInspect(ctx, image)
-	if err != nil {
-		return nil, fmt.Errorf("image inspect after pull: %w", err)
-	}
-	if oldImageID != "" && oldImageID == newInspect.ID {
-		// Same image — no need to recreate the container.
-		return dm.GetProject(ctx, id)
-	}
-
-	// Newer image obtained. Stop and remove the old container (volume is preserved).
+	// Always recreate the container so config changes (e.g., mounts) are applied.
+	// The volume is preserved.
 	if err := dm.stopAndRemoveContainer(ctx, inspect.ID); err != nil {
 		return nil, err
 	}

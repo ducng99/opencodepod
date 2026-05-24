@@ -868,7 +868,7 @@ func TestDockerManager_UpgradeProject(t *testing.T) {
 
 	// Ports may change on recreate, but should still be non-zero
 	if upgraded.SSHPort == originalSSH && upgraded.WebPort == originalWeb {
-		t.Log("note: ports unchanged after upgrade (image was same)")
+		t.Log("note: ports unchanged after upgrade")
 	}
 }
 
