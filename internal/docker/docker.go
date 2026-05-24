@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"opencodepod/internal/config"
 	"opencodepod/internal/project"
 
+	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	dockerclient "github.com/moby/moby/client"
@@ -103,13 +105,7 @@ func (dm *DockerManager) refreshState(ctx context.Context, p *project.Project) (
 	}
 	inspect := inspectResult.Container
 
-	healthStatus := ""
-	if inspect.State.Health != nil {
-		healthStatus = string(inspect.State.Health.Status)
-	}
-	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
-	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
-	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
+	populateProjectFromInspect(p, &inspect)
 	return p, nil
 }
 
@@ -122,13 +118,84 @@ func hostPortFromInspect(inspect *container.InspectResponse, portKey string) int
 	return port
 }
 
-func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) error {
+func (dm *DockerManager) inspectProject(ctx context.Context, id string) (container.InspectResponse, error) {
+	result, err := dm.Client.ContainerInspect(ctx, project.ContainerName(id), dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		if errors.Is(err, errdefs.ErrNotFound) {
+			return container.InspectResponse{}, fmt.Errorf("project not found: %s", id)
+		}
+		return container.InspectResponse{}, err
+	}
+	return result.Container, nil
+}
+
+func populateProjectFromInspect(p *project.Project, inspect *container.InspectResponse) {
+	healthStatus := ""
+	if inspect.State.Health != nil {
+		healthStatus = string(inspect.State.Health.Status)
+	}
+	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
+	p.SSHPort = hostPortFromInspect(inspect, "22/tcp")
+	p.WebPort = hostPortFromInspect(inspect, "8080/tcp")
+}
+
+func (dm *DockerManager) stopAndRemoveContainer(ctx context.Context, containerID string) error {
+	inspect, err := dm.Client.ContainerInspect(ctx, containerID, dockerclient.ContainerInspectOptions{})
+	if err != nil {
+		return err
+	}
+	if inspect.Container.State.Status == "running" {
+		if _, err := dm.Client.ContainerStop(ctx, containerID, dockerclient.ContainerStopOptions{}); err != nil {
+			return fmt.Errorf("stop: %w", err)
+		}
+	}
+	if _, err := dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+		return fmt.Errorf("remove old container: %w", err)
+	}
+	return nil
+}
+
+func (dm *DockerManager) injectSecrets(ctx context.Context, containerID string) error {
+	if dm.Cfg.Git.Auth.SSHKey != "" {
+		if err := dm.copyGitSSHKey(ctx, containerID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+			return fmt.Errorf("copy git ssh key: %w", err)
+		}
+	}
+	if dm.Cfg.Git.GPG.PrivateKey != "" {
+		if err := dm.copyGPGKey(ctx, containerID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+			return fmt.Errorf("copy gpg key: %w", err)
+		}
+	}
+	if dm.Cfg.Git.GPG.Passphrase != "" {
+		if err := dm.copyGPGPassphrase(ctx, containerID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+			return fmt.Errorf("copy gpg passphrase: %w", err)
+		}
+	}
+	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
+		if err := dm.copyGitCredentials(ctx, containerID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+			return fmt.Errorf("copy git credentials: %w", err)
+		}
+	}
+	return nil
+}
+
+func (dm *DockerManager) startContainer(ctx context.Context, containerID string) error {
+	if _, err := dm.Client.ContainerStart(ctx, containerID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+		return fmt.Errorf("container start: %w", err)
+	}
+	return nil
+}
+
+func writeTarToContainer(ctx context.Context, client *dockerclient.Client, containerID, destPath, filename string, content []byte) error {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-
-	content := []byte(dm.Cfg.Git.Auth.SSHKey)
 	hdr := &tar.Header{
-		Name: filepath.Base(dm.Cfg.Git.Auth.SSHKeyPath),
+		Name: filename,
 		Mode: 0o600,
 		Size: int64(len(content)),
 	}
@@ -141,99 +208,33 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 	if err := tw.Close(); err != nil {
 		return err
 	}
-
-	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: filepath.Dir(dm.Cfg.Git.Auth.SSHKeyPath),
+	_, err := client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+		DestinationPath: destPath,
 		Content:         &buf,
 	})
 	return err
+}
+
+func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) error {
+	return writeTarToContainer(ctx, dm.Client, containerID, filepath.Dir(dm.Cfg.Git.Auth.SSHKeyPath), filepath.Base(dm.Cfg.Git.Auth.SSHKeyPath), []byte(dm.Cfg.Git.Auth.SSHKey))
 }
 
 func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) error {
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-
-	content := []byte(dm.Cfg.Git.GPG.PrivateKey)
-	hdr := &tar.Header{
-		Name: ".gnupg/private.key",
-		Mode: 0o600,
-		Size: int64(len(content)),
-	}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	if _, err := tw.Write(content); err != nil {
-		return err
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: "/home/coder",
-		Content:         &buf,
-	})
-	return err
+	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
 }
 
 func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID string) error {
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-
-	content := []byte(dm.Cfg.Git.GPG.Passphrase)
-	hdr := &tar.Header{
-		Name: ".gnupg/gpg_passphrase.key",
-		Mode: 0o600,
-		Size: int64(len(content)),
-	}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	if _, err := tw.Write(content); err != nil {
-		return err
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: "/home/coder",
-		Content:         &buf,
-	})
-	return err
+	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
 }
 
 func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-
 	var content bytes.Buffer
 	for host, cred := range dm.Cfg.Git.Auth.Credentials {
 		username := url.QueryEscape(cred.Username)
 		password := url.QueryEscape(cred.Password)
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
 	}
-
-	hdr := &tar.Header{
-		Name: ".git-credentials",
-		Mode: 0o600,
-		Size: int64(content.Len()),
-	}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	if _, err := tw.Write(content.Bytes()); err != nil {
-		return err
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: "/home/coder",
-		Content:         &buf,
-	})
-	return err
+	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".git-credentials", content.Bytes())
 }
 
 func generateID(n int) string {

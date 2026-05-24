@@ -2,26 +2,20 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
 	"opencodepod/internal/project"
 
-	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	dockerclient "github.com/moby/moby/client"
 )
 
 func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*project.Project, error) {
-	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(id), dockerclient.ContainerInspectOptions{})
+	inspect, err := dm.inspectProject(ctx, id)
 	if err != nil {
-		if errors.Is(err, errdefs.ErrNotFound) {
-			return nil, fmt.Errorf("project not found: %s", id)
-		}
 		return nil, err
 	}
-	inspect := inspectResult.Container
 	image := inspect.Config.Image
 
 	// Capture the container's actual image ID so we can tell whether the pull
@@ -54,14 +48,8 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 	}
 
 	// Newer image obtained. Stop and remove the old container (volume is preserved).
-	if inspect.State.Status == "running" {
-		if _, err := dm.Client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
-			return nil, fmt.Errorf("stop: %w", err)
-		}
-	}
-
-	if _, err := dm.Client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
-		return nil, fmt.Errorf("remove old container: %w", err)
+	if err := dm.stopAndRemoveContainer(ctx, inspect.ID); err != nil {
+		return nil, err
 	}
 
 	containerConfig := &container.Config{
@@ -87,40 +75,15 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if dm.Cfg.Git.Auth.SSHKey != "" {
-		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy git ssh key: %w", err)
-		}
+	if err := dm.injectSecrets(ctx, createResult.ID); err != nil {
+		return nil, err
 	}
 
-	if dm.Cfg.Git.GPG.PrivateKey != "" {
-		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy gpg key: %w", err)
-		}
+	if err := dm.startContainer(ctx, createResult.ID); err != nil {
+		return nil, err
 	}
 
-	if dm.Cfg.Git.GPG.Passphrase != "" {
-		if err := dm.copyGPGPassphrase(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy gpg passphrase: %w", err)
-		}
-	}
-
-	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
-		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy git credentials: %w", err)
-		}
-	}
-
-	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-		return nil, fmt.Errorf("container start: %w", err)
-	}
-
-	inspectResult, err = dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
@@ -130,13 +93,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 	p.Image = image
 	p.Volumes = project.ProjectVolumes(id)
 
-	healthStatus := ""
-	if inspect.State.Health != nil {
-		healthStatus = string(inspect.State.Health.Status)
-	}
-	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
-	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
-	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
+	populateProjectFromInspect(p, &inspect)
 
 	return p, nil
 }

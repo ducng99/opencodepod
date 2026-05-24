@@ -130,60 +130,24 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	// Inject Git SSH key directly into container filesystem before start.
-	if dm.Cfg.Git.Auth.SSHKey != "" {
-		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy git ssh key: %w", err)
-		}
+	if err := dm.injectSecrets(ctx, createResult.ID); err != nil {
+		return nil, err
 	}
 
-	// Inject GPG private key directly into container filesystem before start.
-	if dm.Cfg.Git.GPG.PrivateKey != "" {
-		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy gpg key: %w", err)
-		}
-	}
-
-	// Inject GPG passphrase directly into container filesystem before start.
-	if dm.Cfg.Git.GPG.Passphrase != "" {
-		if err := dm.copyGPGPassphrase(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy gpg passphrase: %w", err)
-		}
-	}
-
-	// Inject Git HTTP credentials directly into container filesystem before start.
-	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
-		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
-			return nil, fmt.Errorf("copy git credentials: %w", err)
-		}
-	}
-
-	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if err := dm.startContainer(ctx, createResult.ID); err != nil {
 		for _, v := range p.Volumes {
 			_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 		}
-		return nil, fmt.Errorf("container start: %w", err)
+		return nil, err
 	}
 
-	// Inspect to get actual ports
 	inspectResult, err := dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
 	inspect := inspectResult.Container
 
-	healthStatus := ""
-	if inspect.State.Health != nil {
-		healthStatus = string(inspect.State.Health.Status)
-	}
-	p.Status = computeStatus(string(inspect.State.Status), healthStatus)
-	p.SSHPort = hostPortFromInspect(&inspect, "22/tcp")
-	p.WebPort = hostPortFromInspect(&inspect, "8080/tcp")
+	populateProjectFromInspect(p, &inspect)
 
 	return p, nil
 }
