@@ -8,6 +8,7 @@
     "CLAUDE.md",
     "GEMINI.md",
   ],
+  "shell": "/bin/zsh",
   "agent": {
     "build": {
       "permission": {
