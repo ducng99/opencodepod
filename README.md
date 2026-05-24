@@ -42,8 +42,7 @@ The server starts on `http://localhost:8080` by default. Open your browser to `h
 
 Configuration is loaded from `config.json` in the working directory. Missing fields fall back to hard-coded defaults.
 
-`"{file:./git.key}"` syntax can be used to inline the content of the file into a field. See config example below how it is used for GPG key.<br/>
-Note: The content will be trimmed for both prefix and suffix.
+`"{file:./git.key}"` syntax can be used to inline the content of the file into a field. See config example below how it is used for GPG key.
 
 | JSON key | Type | Default | Description |
 |----------|------|---------|-------------|

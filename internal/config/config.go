@@ -19,7 +19,7 @@ type Mount struct {
 
 type GitCredential struct {
 	Username string `json:"username" desc:"Username for Git HTTP authentication."`
-	Password string `json:"password" desc:"Password or PAT for Git HTTP authentication."`
+	Password string `json:"password" desc:"Password or PAT for Git HTTP authentication." trim:"both"`
 }
 
 type GitAuthConfig struct {
@@ -31,7 +31,7 @@ type GitAuthConfig struct {
 type GPGConfig struct {
 	KeyID      string `json:"key_id" desc:"GPG key ID used for commit signing."`
 	PrivateKey string `json:"private_key" desc:"Inline GPG private key for signing commits."`
-	Passphrase string `json:"passphrase" desc:"Passphrase for the GPG private key."`
+	Passphrase string `json:"passphrase" desc:"Passphrase for the GPG private key." trim:"both"`
 }
 
 type GitConfig struct {
@@ -96,10 +96,10 @@ func expandPlaceholders(v any, configDir string) error {
 	for rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
 	}
-	return expandValue(rv, configDir)
+	return expandValue(rv, configDir, "")
 }
 
-func expandValue(v reflect.Value, configDir string) error {
+func expandValue(v reflect.Value, configDir string, trim string) error {
 	switch v.Kind() {
 	case reflect.String:
 		s := v.String()
@@ -112,17 +112,28 @@ func expandValue(v reflect.Value, configDir string) error {
 			if err != nil {
 				return err
 			}
-			v.SetString(strings.TrimSpace(string(content)))
+			s = string(content)
+		}
+		if v.CanSet() {
+			switch trim {
+			case "prefix":
+				s = strings.TrimLeft(s, " \t\n\r")
+			case "suffix":
+				s = strings.TrimRight(s, " \t\n\r")
+			case "both":
+				s = strings.TrimSpace(s)
+			}
+			v.SetString(s)
 		}
 	case reflect.Struct:
-		for _, field := range v.Fields() {
-			if err := expandValue(field, configDir); err != nil {
+		for sf, field := range v.Fields() {
+			if err := expandValue(field, configDir, sf.Tag.Get("trim")); err != nil {
 				return err
 			}
 		}
 	case reflect.Slice, reflect.Array:
 		for i := 0; i < v.Len(); i++ {
-			if err := expandValue(v.Index(i), configDir); err != nil {
+			if err := expandValue(v.Index(i), configDir, ""); err != nil {
 				return err
 			}
 		}
@@ -134,14 +145,14 @@ func expandValue(v reflect.Value, configDir string) error {
 			}
 			copyVal := reflect.New(val.Type()).Elem()
 			copyVal.Set(val)
-			if err := expandValue(copyVal, configDir); err != nil {
+			if err := expandValue(copyVal, configDir, ""); err != nil {
 				return err
 			}
 			v.SetMapIndex(key, copyVal)
 		}
 	case reflect.Pointer:
 		if !v.IsNil() {
-			if err := expandValue(v.Elem(), configDir); err != nil {
+			if err := expandValue(v.Elem(), configDir, ""); err != nil {
 				return err
 			}
 		}
