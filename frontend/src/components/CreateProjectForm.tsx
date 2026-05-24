@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type SubmitEvent } from "react";
 import { LoadingButton } from "./LoadingButton";
 
 interface Props {
@@ -27,7 +27,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
     return () => clearTimeout(id);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
@@ -58,7 +58,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+        <label className="form-label">
           Project name
         </label>
         <input
@@ -67,11 +67,11 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
           placeholder="my-project"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200"
+          className="form-input"
         />
       </div>
       <div>
-        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+        <label className="form-label">
           Git repository
         </label>
         <input
@@ -79,7 +79,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
           placeholder="user/repo (optional)"
           value={gitRepo}
           onChange={(e) => setGitRepo(e.target.value)}
-          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
+          className="form-input"
         />
       </div>
 
@@ -87,7 +87,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         <button
           type="button"
           onClick={() => setAdvancedOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-oc-text-secondary bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-oc-text-secondary bg-white/2 hover:bg-white/4 transition-colors"
         >
           <span>Advanced clone options</span>
           <svg
@@ -110,7 +110,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         >
           <div className="px-4 pb-4 pt-2 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+              <label className="form-label">
                 Branch
               </label>
               <input
@@ -118,14 +118,14 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                 placeholder="main (optional)"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
-                className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
+                className="form-input"
               />
               <p className="text-xs text-oc-text-muted mt-1.5">
                 Clone a specific branch instead of the default.
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+              <label className="form-label">
                 Depth
               </label>
               <input
@@ -134,7 +134,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                 placeholder="1 (optional)"
                 value={depth}
                 onChange={(e) => setDepth(e.target.value)}
-                className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
+                className="form-input"
               />
               <p className="text-xs text-oc-text-muted mt-1.5">
                 Create a shallow clone with limited history.
@@ -145,7 +145,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-oc-text-secondary uppercase tracking-wider mb-2">
+        <label className="form-label">
           Docker image
         </label>
         <input
@@ -153,7 +153,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
           placeholder="default image (optional)"
           value={image}
           onChange={(e) => setImage(e.target.value)}
-          className="w-full px-4 py-2.5 bg-oc-bg border border-oc-border rounded-xl text-sm text-oc-text placeholder:text-oc-text-muted input-glow transition-all duration-200 font-mono"
+          className="form-input"
         />
       </div>
 
@@ -169,7 +169,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         <LoadingButton
           type="submit"
           loading={loading}
-          className="px-5 py-2.5 bg-oc-accent hover:bg-oc-accent-hover disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all duration-200"
+          className="btn-primary"
         >
           Create Project
         </LoadingButton>

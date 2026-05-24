@@ -103,7 +103,7 @@ export function App() {
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="group inline-flex items-center gap-2 px-5 py-2.5 bg-oc-accent hover:bg-oc-accent-hover text-white text-sm font-semibold rounded-xl transition-all duration-200 btn-glow"
+            className="btn-primary group inline-flex items-center gap-2 btn-glow"
             style={{
               boxShadow: "0 0 0 1px rgba(59,130,246,0.2), 0 8px 24px -6px rgba(59,130,246,0.35)",
             }}
