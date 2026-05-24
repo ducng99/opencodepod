@@ -168,12 +168,6 @@ func (dm *DockerManager) injectSecrets(ctx context.Context, containerID string) 
 			return fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
-	if dm.Cfg.Git.GPG.Passphrase != "" {
-		if err := dm.copyGPGPassphrase(ctx, containerID); err != nil {
-			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
-			return fmt.Errorf("copy gpg passphrase: %w", err)
-		}
-	}
 	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, containerID); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
@@ -221,10 +215,6 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 
 func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) error {
 	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
-}
-
-func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
 }
 
 func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {

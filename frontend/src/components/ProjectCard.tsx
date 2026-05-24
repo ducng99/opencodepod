@@ -192,7 +192,7 @@ export function ProjectCard({
                         {project.id}
                     </span>
                     <span className="text-oc-text-muted/50">/</span>
-                    <span className="truncate max-w-45" style={{ direction: "rtl" }} title={project.image || ""}>
+                    <span className="truncate" style={{ direction: "rtl" }} title={project.image || ""}>
                         {project.image || "default"}
                     </span>
                 </div>

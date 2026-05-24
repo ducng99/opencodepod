@@ -47,8 +47,8 @@
               "description": "GPG key ID used for commit signing.",
               "type": "string"
             },
-            "passphrase": {
-              "description": "Passphrase for the GPG private key.",
+            "passphrase_path": {
+              "description": "Container path to the mounted passphrase file for the GPG private key.",
               "type": "string"
             },
             "private_key": {

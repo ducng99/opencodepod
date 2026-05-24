@@ -34,32 +34,24 @@ if [ -f /home/coder/.gnupg/private.key ]; then
   chmod 700 /home/coder/.gnupg
   chmod 600 /home/coder/.gnupg/private.key
 
-  GPG_PASSPHRASE_FILE=""
-  if [ -f /home/coder/.gnupg/gpg_passphrase.key ]; then
-    chmod 600 /home/coder/.gnupg/gpg_passphrase.key
-    GPG_PASSPHRASE_FILE="/home/coder/.gnupg/gpg_passphrase.key"
-  fi
-
   # Allow loopback pinentry for unattended signing
   mkdir -p /home/coder/.gnupg
   echo "allow-loopback-pinentry" >> /home/coder/.gnupg/gpg-agent.conf
   gpgconf --kill gpg-agent 2>/dev/null || true
 
   # Import the key
-  if [ -n "$GPG_PASSPHRASE_FILE" ]; then
-    gpg --batch --yes --pinentry-mode loopback --passphrase-file "$GPG_PASSPHRASE_FILE" --armor --import /home/coder/.gnupg/private.key
-  else
-    gpg --armor --import /home/coder/.gnupg/private.key 2>/dev/null || true
-  fi
-
-  # Create a wrapper so git commit -S is non-interactive
-  if [ -n "$GPG_PASSPHRASE_FILE" ]; then
+  if [ -n "$GPG_PASSPHRASE_PATH" ] && [ -f "$GPG_PASSPHRASE_PATH" ]; then
+    gpg --batch --yes --pinentry-mode loopback --passphrase-file "$GPG_PASSPHRASE_PATH" --armor --import /home/coder/.gnupg/private.key
+  
+    # Create a wrapper so git commit -S is non-interactive
     sudo tee /usr/local/bin/gpg-auto > /dev/null <<'EOF'
 #!/bin/sh
-exec /usr/bin/gpg --batch --yes --pinentry-mode loopback --passphrase-file /home/coder/.gnupg/gpg_passphrase.key "$@"
+exec /usr/bin/gpg --batch --yes --pinentry-mode loopback --passphrase-file "$GPG_PASSPHRASE_PATH" "$@"
 EOF
     sudo chmod +x /usr/local/bin/gpg-auto
     git config --global gpg.program /usr/local/bin/gpg-auto
+  else
+    gpg --armor --import /home/coder/.gnupg/private.key 2>/dev/null || true
   fi
 
   # Configure git to use GPG signing
