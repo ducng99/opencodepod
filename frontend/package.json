@@ -5,7 +5,8 @@
   "scripts": {
     "build": "bun build.ts",
     "dev": "bun build.ts --watch",
-    "lint": "eslint --fix ."
+    "lint": "eslint --fix .",
+    "lint:check": "eslint ."
   },
   "dependencies": {
     "react": "^19.1.0",
