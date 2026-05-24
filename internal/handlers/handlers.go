@@ -1,18 +1,22 @@
-package internal
+package handlers
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"opencodepod/internal/config"
+	"opencodepod/internal/docker"
+	"opencodepod/internal/project"
 )
 
 type Server struct {
-	cfg    *Config
-	docker *DockerManager
+	cfg    *config.Config
+	docker *docker.DockerManager
 }
 
-func NewServer(cfg *Config, docker *DockerManager) *Server {
+func NewServer(cfg *config.Config, docker *docker.DockerManager) *Server {
 	return &Server{cfg: cfg, docker: docker}
 }
 
@@ -37,7 +41,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreate(w http.ResponseWriter, r *http.Request) {
-	var req CreateRequest
+	var req project.CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeError(w, http.StatusBadRequest, err)
 		return
@@ -66,7 +70,7 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	var req UpdateRequest
+	var req project.UpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeError(w, http.StatusBadRequest, err)
 		return
@@ -126,7 +130,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) writeJSON(w http.ResponseWriter, status int, v interface{}) {
+func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)

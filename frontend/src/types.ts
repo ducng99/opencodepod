@@ -13,6 +13,8 @@ export interface CreateRequest {
   name: string;
   git_repo?: string;
   image?: string;
+  git_branch?: string;
+  git_depth?: number;
 }
 
 export interface UpdateRequest {

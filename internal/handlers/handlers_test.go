@@ -1,4 +1,4 @@
-package internal
+package handlers
 
 import (
 	"bytes"
@@ -8,14 +8,19 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"opencodepod/internal/config"
+	"opencodepod/internal/docker"
+	"opencodepod/internal/project"
+	"opencodepod/internal/utils"
 )
 
-func setupTestServer(t *testing.T) (*Server, *DockerManager) {
+func setupTestServer(t *testing.T) (*Server, *docker.DockerManager) {
 	t.Helper()
-	dm := requireDocker(t)
-	cfg := &Config{
+	dm := utils.RequireDocker(t)
+	cfg := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
+		DefaultImage: utils.TestImage,
 	}
 	server := NewServer(cfg, dm)
 	return server, dm
@@ -30,16 +35,16 @@ func TestHandleList(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Seed a project so list is non-empty
-	reqBody, _ := json.Marshal(CreateRequest{Name: "list-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "list-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("setup create failed: %d %s", createRec.Code, createRec.Body.String())
 	}
-	var created Project
+	var created project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &created)
-	defer cleanupTestProject(t, dm, created.ID)
+	defer utils.CleanupTestProject(t, dm, created.ID)
 
 	// List
 	listReq := httptest.NewRequest("GET", "/api/projects", nil)
@@ -48,7 +53,7 @@ func TestHandleList(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list failed: %d %s", listRec.Code, listRec.Body.String())
 	}
-	var projects []*Project
+	var projects []*project.Project
 	if err := json.Unmarshal(listRec.Body.Bytes(), &projects); err != nil {
 		t.Fatalf("unmarshal list: %v", err)
 	}
@@ -74,7 +79,7 @@ func TestHandleCreate(t *testing.T) {
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
-	reqBody, _ := json.Marshal(CreateRequest{Name: "create-test", GitRepo: "https://github.com/user/repo"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "create-test", GitRepo: "https://github.com/user/repo"})
 	req := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -83,7 +88,7 @@ func TestHandleCreate(t *testing.T) {
 		t.Fatalf("create failed: %d %s", rec.Code, rec.Body.String())
 	}
 
-	var p Project
+	var p project.Project
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -96,7 +101,7 @@ func TestHandleCreate(t *testing.T) {
 	if p.GitRepo != "https://github.com/user/repo" {
 		t.Errorf("expected git repo, got %s", p.GitRepo)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer utils.CleanupTestProject(t, dm, p.ID)
 }
 
 func TestHandleCreate_BadRequest(t *testing.T) {
@@ -108,7 +113,7 @@ func TestHandleCreate_BadRequest(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Empty name
-	reqBody, _ := json.Marshal(CreateRequest{Name: "   "})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "   "})
 	req := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -130,13 +135,13 @@ func TestHandleGet(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Create
-	reqBody, _ := json.Marshal(CreateRequest{Name: "get-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "get-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
-	var p Project
+	var p project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &p)
-	defer cleanupTestProject(t, dm, p.ID)
+	defer utils.CleanupTestProject(t, dm, p.ID)
 
 	// Get
 	getReq := httptest.NewRequest("GET", "/api/projects/"+p.ID, nil)
@@ -146,7 +151,7 @@ func TestHandleGet(t *testing.T) {
 	if getRec.Code != http.StatusOK {
 		t.Fatalf("get failed: %d %s", getRec.Code, getRec.Body.String())
 	}
-	var got Project
+	var got project.Project
 	if err := json.Unmarshal(getRec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -171,13 +176,13 @@ func TestHandleStartStop(t *testing.T) {
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
-	reqBody, _ := json.Marshal(CreateRequest{Name: "startstop-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "startstop-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
-	var p Project
+	var p project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &p)
-	defer cleanupTestProject(t, dm, p.ID)
+	defer utils.CleanupTestProject(t, dm, p.ID)
 
 	// Stop
 	stopReq := httptest.NewRequest("POST", "/api/projects/"+p.ID+"/stop", nil)
@@ -186,7 +191,7 @@ func TestHandleStartStop(t *testing.T) {
 	if stopRec.Code != http.StatusOK {
 		t.Fatalf("stop failed: %d %s", stopRec.Code, stopRec.Body.String())
 	}
-	var stopped Project
+	var stopped project.Project
 	_ = json.Unmarshal(stopRec.Body.Bytes(), &stopped)
 	if stopped.Status == "running" {
 		t.Errorf("expected non-running after stop, got %s", stopped.Status)
@@ -199,7 +204,7 @@ func TestHandleStartStop(t *testing.T) {
 	if startRec.Code != http.StatusOK {
 		t.Fatalf("start failed: %d %s", startRec.Code, startRec.Body.String())
 	}
-	var started Project
+	var started project.Project
 	_ = json.Unmarshal(startRec.Body.Bytes(), &started)
 	if started.Status != "running" {
 		t.Errorf("expected running after start, got %s", started.Status)
@@ -214,11 +219,11 @@ func TestHandleDelete(t *testing.T) {
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
-	reqBody, _ := json.Marshal(CreateRequest{Name: "delete-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "delete-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
-	var p Project
+	var p project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &p)
 
 	// Delete
@@ -240,7 +245,7 @@ func TestHandleDelete(t *testing.T) {
 
 // cleanupOrphaned removes any test containers left over from prior runs
 // that match our test naming patterns.
-func cleanupOrphaned(t *testing.T, dm *DockerManager) {
+func cleanupOrphaned(t *testing.T, dm *docker.DockerManager) {
 	t.Helper()
 	// Nothing to do here currently; individual tests clean up their own projects.
 	// If we used randomized names without defer, we'd scan and delete here.
@@ -262,7 +267,7 @@ func TestHandleList_Empty(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list failed: %d %s", rec.Code, rec.Body.String())
 	}
-	var projects []*Project
+	var projects []*project.Project
 	if err := json.Unmarshal(rec.Body.Bytes(), &projects); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -281,16 +286,16 @@ func TestHandleUpgrade(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Create a project first
-	reqBody, _ := json.Marshal(CreateRequest{Name: "upgrade-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "upgrade-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("setup create failed: %d %s", createRec.Code, createRec.Body.String())
 	}
-	var created Project
+	var created project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &created)
-	defer cleanupTestProject(t, dm, created.ID)
+	defer utils.CleanupTestProject(t, dm, created.ID)
 
 	// Upgrade
 	upgradeReq := httptest.NewRequest("POST", "/api/projects/"+created.ID+"/upgrade", nil)
@@ -301,7 +306,7 @@ func TestHandleUpgrade(t *testing.T) {
 		t.Fatalf("upgrade failed: %d %s", upgradeRec.Code, upgradeRec.Body.String())
 	}
 
-	var upgraded Project
+	var upgraded project.Project
 	if err := json.Unmarshal(upgradeRec.Body.Bytes(), &upgraded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -322,19 +327,19 @@ func TestHandleUpdate(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Create a project first
-	reqBody, _ := json.Marshal(CreateRequest{Name: "update-test"})
+	reqBody, _ := json.Marshal(project.CreateRequest{Name: "update-test"})
 	createReq := httptest.NewRequest("POST", "/api/projects", bytes.NewReader(reqBody))
 	createRec := httptest.NewRecorder()
 	mux.ServeHTTP(createRec, createReq)
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("setup create failed: %d %s", createRec.Code, createRec.Body.String())
 	}
-	var created Project
+	var created project.Project
 	_ = json.Unmarshal(createRec.Body.Bytes(), &created)
-	defer cleanupTestProject(t, dm, created.ID)
+	defer utils.CleanupTestProject(t, dm, created.ID)
 
 	// Update name
-	updateBody, _ := json.Marshal(UpdateRequest{Name: "updated-name"})
+	updateBody, _ := json.Marshal(project.UpdateRequest{Name: "updated-name"})
 	updateReq := httptest.NewRequest("PATCH", "/api/projects/"+created.ID, bytes.NewReader(updateBody))
 	updateRec := httptest.NewRecorder()
 	mux.ServeHTTP(updateRec, updateReq)
@@ -343,7 +348,7 @@ func TestHandleUpdate(t *testing.T) {
 		t.Fatalf("update failed: %d %s", updateRec.Code, updateRec.Body.String())
 	}
 
-	var updated Project
+	var updated project.Project
 	if err := json.Unmarshal(updateRec.Body.Bytes(), &updated); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -364,7 +369,7 @@ func TestHandleUpdate_BadRequest(t *testing.T) {
 	server.RegisterRoutes(mux)
 
 	// Empty name
-	reqBody, _ := json.Marshal(UpdateRequest{Name: "   "})
+	reqBody, _ := json.Marshal(project.UpdateRequest{Name: "   "})
 	req := httptest.NewRequest("PATCH", "/api/projects/some-id", bytes.NewReader(reqBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -385,7 +390,7 @@ func TestHandleUpdate_NotFound(t *testing.T) {
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
-	updateBody, _ := json.Marshal(UpdateRequest{Name: "new-name"})
+	updateBody, _ := json.Marshal(project.UpdateRequest{Name: "new-name"})
 	updateReq := httptest.NewRequest("PATCH", "/api/projects/nonexistent-id", bytes.NewReader(updateBody))
 	updateRec := httptest.NewRecorder()
 	mux.ServeHTTP(updateRec, updateReq)

@@ -1,4 +1,4 @@
-package internal
+package docker
 
 import (
 	"archive/tar"
@@ -14,6 +14,9 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"opencodepod/internal/config"
+	"opencodepod/internal/project"
+
 	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
@@ -21,26 +24,26 @@ import (
 )
 
 type DockerManager struct {
-	client *dockerclient.Client
-	cfg    *Config
+	Client *dockerclient.Client
+	Cfg    *config.Config
 }
 
-func NewDockerManager(cfg *Config) (*DockerManager, error) {
+func NewDockerManager(cfg *config.Config) (*DockerManager, error) {
 	cli, err := dockerclient.New(dockerclient.FromEnv)
 	if err != nil {
 		return nil, err
 	}
-	return &DockerManager{client: cli, cfg: cfg}, nil
+	return &DockerManager{Client: cli, Cfg: cfg}, nil
 }
 
 func (dm *DockerManager) Close() error {
-	return dm.client.Close()
+	return dm.Client.Close()
 }
 
-func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=true", LabelManaged))
+func (dm *DockerManager) ListProjects(ctx context.Context) ([]*project.Project, error) {
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=true", project.LabelManaged))
 
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
@@ -48,7 +51,7 @@ func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
 		return nil, err
 	}
 
-	projects := make([]*Project, 0, len(result.Items))
+	projects := make([]*project.Project, 0, len(result.Items))
 	for _, c := range result.Items {
 		p := dm.containerToProject(&c)
 		projects = append(projects, p)
@@ -56,8 +59,8 @@ func (dm *DockerManager) ListProjects(ctx context.Context) ([]*Project, error) {
 	return projects, nil
 }
 
-func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, error) {
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
+func (dm *DockerManager) GetProject(ctx context.Context, id string) (*project.Project, error) {
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(id), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		if errors.Is(err, errdefs.ErrNotFound) {
 			return nil, fmt.Errorf("project not found: %s", id)
@@ -66,7 +69,7 @@ func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, e
 	}
 	inspect := inspectResult.Container
 
-	p := ProjectFromLabels(id, inspect.Config.Labels)
+	p := project.ProjectFromLabels(id, inspect.Config.Labels)
 
 	healthStatus := ""
 	if inspect.State.Health != nil {
@@ -78,49 +81,51 @@ func (dm *DockerManager) GetProject(ctx context.Context, id string) (*Project, e
 	return p, nil
 }
 
-func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) (*Project, error) {
+func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateRequest) (*project.Project, error) {
 	id := generateID(8)
 	image := req.Image
 	if image == "" {
-		image = dm.cfg.DefaultImage
+		image = dm.Cfg.DefaultImage
 	}
 
-	p := &Project{
-		ID:      id,
-		Name:    req.Name,
-		GitRepo: req.GitRepo,
-		Image:   image,
-		Volumes: ProjectVolumes(id),
-		Status:  "creating",
+	p := &project.Project{
+		ID:        id,
+		Name:      req.Name,
+		GitRepo:   req.GitRepo,
+		GitBranch: req.GitBranch,
+		GitDepth:  req.GitDepth,
+		Image:     image,
+		Volumes:   project.ProjectVolumes(id),
+		Status:    "creating",
 	}
 
 	for _, vol := range p.Volumes {
-		_, err := dm.client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
+		_, err := dm.Client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
 			Name:   vol,
 			Driver: "local",
 			Labels: map[string]string{
-				LabelManaged:   "true",
-				LabelProjectID: id,
-				LabelName:      req.Name,
+				project.LabelManaged:   "true",
+				project.LabelProjectID: id,
+				project.LabelName:      req.Name,
 			},
 		})
 		if err != nil {
 			for _, v := range p.Volumes {
-				_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+				_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 			}
 			return nil, fmt.Errorf("volume create: %w", err)
 		}
 	}
 
 	// Try to pull the latest image; if that fails, fall back to a locally cached copy.
-	pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
+	pr, err := dm.Client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
 	if err == nil {
 		_, _ = io.Copy(io.Discard, pr)
 		_ = pr.Close()
 	} else {
-		if _, inspectErr := dm.client.ImageInspect(ctx, image); inspectErr != nil {
+		if _, inspectErr := dm.Client.ImageInspect(ctx, image); inspectErr != nil {
 			for _, v := range p.Volumes {
-				_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+				_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 			}
 			return nil, fmt.Errorf("image pull failed and no local image found: %w", err)
 		}
@@ -139,34 +144,26 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 
 	env := []string{}
-	if req.GitRepo != "" {
-		env = append(env, fmt.Sprintf("GIT_REPO=%s", req.GitRepo))
-	}
-	if dm.cfg.SSHPublicKey != "" {
-		env = append(env, fmt.Sprintf("SSH_PUBLIC_KEY=%s", dm.cfg.SSHPublicKey))
-	}
-	if dm.cfg.Git.UserName != "" {
-		env = append(env, fmt.Sprintf("GIT_USER_NAME=%s", dm.cfg.Git.UserName))
-	}
-	if dm.cfg.Git.UserEmail != "" {
-		env = append(env, fmt.Sprintf("GIT_USER_EMAIL=%s", dm.cfg.Git.UserEmail))
-	}
-	if dm.cfg.Git.GPG.KeyID != "" {
-		env = append(env, fmt.Sprintf("GIT_GPG_KEY_ID=%s", dm.cfg.Git.GPG.KeyID))
-	}
+	env = appendEnv(env, "GIT_REPO", req.GitRepo)
+	env = appendEnv(env, "GIT_BRANCH", req.GitBranch)
+	env = appendEnvInt(env, "GIT_DEPTH", req.GitDepth)
+	env = appendEnv(env, "SSH_PUBLIC_KEY", dm.Cfg.SSHPublicKey)
+	env = appendEnv(env, "GIT_USER_NAME", dm.Cfg.Git.UserName)
+	env = appendEnv(env, "GIT_USER_EMAIL", dm.Cfg.Git.UserEmail)
+	env = appendEnv(env, "GIT_GPG_KEY_ID", dm.Cfg.Git.GPG.KeyID)
 
 	containerConfig := &container.Config{
 		Image:        image,
-		Labels:       LabelsFromProject(p),
+		Labels:       project.LabelsFromProject(p),
 		ExposedPorts: exposedPorts,
 		Env:          env,
 	}
 
-	binds := make([]string, 0, len(p.Volumes)+len(dm.cfg.Mounts))
-	for _, mount := range ProjectVolumeMounts(p.ID) {
+	binds := make([]string, 0, len(p.Volumes)+len(dm.Cfg.Mounts))
+	for _, mount := range project.ProjectVolumeMounts(p.ID) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
-	for _, m := range dm.cfg.Mounts {
+	for _, m := range dm.Cfg.Mounts {
 		if m.Source == "" || m.Target == "" {
 			continue
 		}
@@ -178,7 +175,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	}
 
 	extraHosts := []string{"host.docker.internal:host-gateway"}
-	for host, ip := range dm.cfg.Hosts {
+	for host, ip := range dm.Cfg.Hosts {
 		extraHosts = append(extraHosts, fmt.Sprintf("%s:%s", host, ip))
 	}
 
@@ -191,52 +188,52 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 		},
 	}
 
-	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+	createResult, err := dm.Client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Config:     containerConfig,
 		HostConfig: hostConfig,
-		Name:       ContainerName(id),
+		Name:       project.ContainerName(id),
 	})
 	if err != nil {
 		for _, v := range p.Volumes {
-			_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+			_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 		}
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
 	// Inject Git SSH key directly into container filesystem before start.
-	if dm.cfg.Git.Auth.SSHKey != "" {
+	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git ssh key: %w", err)
 		}
 	}
 
 	// Inject GPG private key directly into container filesystem before start.
-	if dm.cfg.Git.GPG.PrivateKey != "" {
+	if dm.Cfg.Git.GPG.PrivateKey != "" {
 		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
 
 	// Inject Git HTTP credentials directly into container filesystem before start.
-	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git credentials: %w", err)
 		}
 	}
 
-	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		for _, v := range p.Volumes {
-			_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+			_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 		}
 		return nil, fmt.Errorf("container start: %w", err)
 	}
 
 	// Inspect to get actual ports
-	inspectResult, err := dm.client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
@@ -253,7 +250,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *CreateRequest) 
 	return p, nil
 }
 
-func (dm *DockerManager) StartProject(ctx context.Context, id string) (*Project, error) {
+func (dm *DockerManager) StartProject(ctx context.Context, id string) (*project.Project, error) {
 	p, err := dm.GetProject(ctx, id)
 	if err != nil {
 		return nil, err
@@ -262,13 +259,13 @@ func (dm *DockerManager) StartProject(ctx context.Context, id string) (*Project,
 		return p, nil
 	}
 
-	if _, err := dm.client.ContainerStart(ctx, ContainerName(id), dockerclient.ContainerStartOptions{}); err != nil {
+	if _, err := dm.Client.ContainerStart(ctx, project.ContainerName(id), dockerclient.ContainerStartOptions{}); err != nil {
 		return nil, fmt.Errorf("start: %w", err)
 	}
 	return dm.GetProject(ctx, id)
 }
 
-func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, error) {
+func (dm *DockerManager) StopProject(ctx context.Context, id string) (*project.Project, error) {
 	p, err := dm.GetProject(ctx, id)
 	if err != nil {
 		return nil, err
@@ -277,14 +274,14 @@ func (dm *DockerManager) StopProject(ctx context.Context, id string) (*Project, 
 		return p, nil
 	}
 
-	if _, err := dm.client.ContainerStop(ctx, ContainerName(id), dockerclient.ContainerStopOptions{}); err != nil {
+	if _, err := dm.Client.ContainerStop(ctx, project.ContainerName(id), dockerclient.ContainerStopOptions{}); err != nil {
 		return nil, fmt.Errorf("stop: %w", err)
 	}
 	return dm.GetProject(ctx, id)
 }
 
-func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *UpdateRequest) (*Project, error) {
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
+func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *project.UpdateRequest) (*project.Project, error) {
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(id), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		if errors.Is(err, errdefs.ErrNotFound) {
 			return nil, fmt.Errorf("project not found: %s", id)
@@ -297,15 +294,15 @@ func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *Upda
 	for k, v := range inspect.Config.Labels {
 		labels[k] = v
 	}
-	labels[LabelName] = req.Name
+	labels[project.LabelName] = req.Name
 
 	if inspect.State.Status == "running" {
-		if _, err := dm.client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
+		if _, err := dm.Client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
 			return nil, fmt.Errorf("stop: %w", err)
 		}
 	}
 
-	if _, err := dm.client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+	if _, err := dm.Client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 		return nil, fmt.Errorf("remove old container: %w", err)
 	}
 
@@ -323,50 +320,50 @@ func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *Upda
 		RestartPolicy: inspect.HostConfig.RestartPolicy,
 	}
 
-	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+	createResult, err := dm.Client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Config:     containerConfig,
 		HostConfig: hostConfig,
-		Name:       ContainerName(id),
+		Name:       project.ContainerName(id),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if dm.cfg.Git.Auth.SSHKey != "" {
+	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git ssh key: %w", err)
 		}
 	}
 
-	if dm.cfg.Git.GPG.PrivateKey != "" {
+	if dm.Cfg.Git.GPG.PrivateKey != "" {
 		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
 
-	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git credentials: %w", err)
 		}
 	}
 
-	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container start: %w", err)
 	}
 
-	inspectResult, err = dm.client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
+	inspectResult, err = dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
 	inspect = inspectResult.Container
 
-	p := ProjectFromLabels(id, inspect.Config.Labels)
+	p := project.ProjectFromLabels(id, inspect.Config.Labels)
 	p.Image = inspect.Config.Image
-	p.Volumes = ProjectVolumes(id)
+	p.Volumes = project.ProjectVolumes(id)
 
 	healthStatus := ""
 	if inspect.State.Health != nil {
@@ -379,8 +376,8 @@ func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *Upda
 	return p, nil
 }
 
-func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Project, error) {
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(id), dockerclient.ContainerInspectOptions{})
+func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*project.Project, error) {
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(id), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		if errors.Is(err, errdefs.ErrNotFound) {
 			return nil, fmt.Errorf("project not found: %s", id)
@@ -398,7 +395,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 
 	// Pull the latest image. The daemon streams JSON progress messages; we must
 	// drain the entire body so the HTTP connection completes and the pull finishes.
-	pr, err := dm.client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
+	pr, err := dm.Client.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
 	if err == nil {
 		_, _ = io.Copy(io.Discard, pr)
 		_ = pr.Close()
@@ -410,7 +407,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 	}
 
 	// Check whether the image actually changed.
-	newInspect, err := dm.client.ImageInspect(ctx, image)
+	newInspect, err := dm.Client.ImageInspect(ctx, image)
 	if err != nil {
 		return nil, fmt.Errorf("image inspect after pull: %w", err)
 	}
@@ -421,12 +418,12 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 
 	// Newer image obtained. Stop and remove the old container (volume is preserved).
 	if inspect.State.Status == "running" {
-		if _, err := dm.client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
+		if _, err := dm.Client.ContainerStop(ctx, inspect.ID, dockerclient.ContainerStopOptions{}); err != nil {
 			return nil, fmt.Errorf("stop: %w", err)
 		}
 	}
 
-	if _, err := dm.client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+	if _, err := dm.Client.ContainerRemove(ctx, inspect.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 		return nil, fmt.Errorf("remove old container: %w", err)
 	}
 
@@ -444,50 +441,50 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 		RestartPolicy: inspect.HostConfig.RestartPolicy,
 	}
 
-	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+	createResult, err := dm.Client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Config:     containerConfig,
 		HostConfig: hostConfig,
-		Name:       ContainerName(id),
+		Name:       project.ContainerName(id),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if dm.cfg.Git.Auth.SSHKey != "" {
+	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git ssh key: %w", err)
 		}
 	}
 
-	if dm.cfg.Git.GPG.PrivateKey != "" {
+	if dm.Cfg.Git.GPG.PrivateKey != "" {
 		if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
 
-	if len(dm.cfg.Git.Auth.Credentials) > 0 {
+	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
-			_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 			return nil, fmt.Errorf("copy git credentials: %w", err)
 		}
 	}
 
-	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		return nil, fmt.Errorf("container start: %w", err)
 	}
 
-	inspectResult, err = dm.client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
+	inspectResult, err = dm.Client.ContainerInspect(ctx, createResult.ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container inspect: %w", err)
 	}
 	inspect = inspectResult.Container
 
-	p := ProjectFromLabels(id, inspect.Config.Labels)
+	p := project.ProjectFromLabels(id, inspect.Config.Labels)
 	p.Image = image
-	p.Volumes = ProjectVolumes(id)
+	p.Volumes = project.ProjectVolumes(id)
 
 	healthStatus := ""
 	if inspect.State.Health != nil {
@@ -501,8 +498,8 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*Projec
 }
 
 func (dm *DockerManager) DeleteProject(ctx context.Context, id string) error {
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, id))
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
@@ -510,18 +507,32 @@ func (dm *DockerManager) DeleteProject(ctx context.Context, id string) error {
 		return err
 	}
 	for _, c := range result.Items {
-		if _, err := dm.client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+		if _, err := dm.Client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 			return fmt.Errorf("remove container: %w", err)
 		}
 	}
-	for _, vol := range ProjectVolumes(id) {
-		if _, err := dm.client.VolumeRemove(ctx, vol, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+	for _, vol := range project.ProjectVolumes(id) {
+		if _, err := dm.Client.VolumeRemove(ctx, vol, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
 			if !errors.Is(err, errdefs.ErrNotFound) {
 				return fmt.Errorf("remove volume %s: %w", vol, err)
 			}
 		}
 	}
 	return nil
+}
+
+func appendEnv(env []string, key, val string) []string {
+	if val != "" {
+		return append(env, key+"="+val)
+	}
+	return env
+}
+
+func appendEnvInt(env []string, key string, val int) []string {
+	if val > 0 {
+		return append(env, fmt.Sprintf("%s=%d", key, val))
+	}
+	return env
 }
 
 func computeStatus(state, healthStatus string) string {
@@ -538,8 +549,8 @@ func computeStatus(state, healthStatus string) string {
 	}
 }
 
-func (dm *DockerManager) containerToProject(c *container.Summary) *Project {
-	p := ProjectFromLabels(c.Labels[LabelProjectID], c.Labels)
+func (dm *DockerManager) containerToProject(c *container.Summary) *project.Project {
+	p := project.ProjectFromLabels(c.Labels[project.LabelProjectID], c.Labels)
 
 	healthStatus := ""
 	if c.Health != nil {
@@ -559,9 +570,9 @@ func (dm *DockerManager) containerToProject(c *container.Summary) *Project {
 	return p
 }
 
-func (dm *DockerManager) refreshState(ctx context.Context, p *Project) (*Project, error) {
-	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{
+func (dm *DockerManager) refreshState(ctx context.Context, p *project.Project) (*project.Project, error) {
+	filter := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, p.ID))
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
@@ -571,7 +582,7 @@ func (dm *DockerManager) refreshState(ctx context.Context, p *Project) (*Project
 	if len(result.Items) == 0 {
 		return nil, fmt.Errorf("project not found: %s", p.ID)
 	}
-	inspectResult, err := dm.client.ContainerInspect(ctx, result.Items[0].ID, dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, result.Items[0].ID, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -600,9 +611,9 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 
-	content := []byte(dm.cfg.Git.Auth.SSHKey)
+	content := []byte(dm.Cfg.Git.Auth.SSHKey)
 	hdr := &tar.Header{
-		Name: filepath.Base(dm.cfg.Git.Auth.SSHKeyPath),
+		Name: filepath.Base(dm.Cfg.Git.Auth.SSHKeyPath),
 		Mode: 0o600,
 		Size: int64(len(content)),
 	}
@@ -616,8 +627,8 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 		return err
 	}
 
-	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
-		DestinationPath: filepath.Dir(dm.cfg.Git.Auth.SSHKeyPath),
+	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+		DestinationPath: filepath.Dir(dm.Cfg.Git.Auth.SSHKeyPath),
 		Content:         &buf,
 	})
 	return err
@@ -627,7 +638,7 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 
-	content := []byte(dm.cfg.Git.GPG.PrivateKey)
+	content := []byte(dm.Cfg.Git.GPG.PrivateKey)
 	hdr := &tar.Header{
 		Name: ".gnupg/private.key",
 		Mode: 0o600,
@@ -643,7 +654,7 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 		return err
 	}
 
-	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
 		DestinationPath: "/home/coder",
 		Content:         &buf,
 	})
@@ -655,7 +666,7 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 	tw := tar.NewWriter(&buf)
 
 	var content bytes.Buffer
-	for host, cred := range dm.cfg.Git.Auth.Credentials {
+	for host, cred := range dm.Cfg.Git.Auth.Credentials {
 		username := url.QueryEscape(cred.Username)
 		password := url.QueryEscape(cred.Password)
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
@@ -676,7 +687,7 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 		return err
 	}
 
-	_, err := dm.client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
 		DestinationPath: "/home/coder",
 		Content:         &buf,
 	})

@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"encoding/json"
@@ -90,7 +90,7 @@ func loadConfigFrom(path string) (*Config, error) {
 	return cfg, nil
 }
 
-func expandPlaceholders(v interface{}, configDir string) error {
+func expandPlaceholders(v any, configDir string) error {
 	rv := reflect.ValueOf(v)
 	for rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()

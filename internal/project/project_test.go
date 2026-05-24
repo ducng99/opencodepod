@@ -1,4 +1,4 @@
-package internal
+package project
 
 import (
 	"testing"
@@ -87,14 +87,14 @@ func TestParsePort(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name     string
-		ports    []interface{}
+		ports    []any
 		expected int
 	}{
-		{"empty", []interface{}{}, 0},
-		{"string", []interface{}{"8080/tcp"}, 8080},
-		{"map", []interface{}{map[string]interface{}{"HostPort": "9090"}}, 9090},
-		{"invalid string", []interface{}{"abc"}, 0},
-		{"invalid map", []interface{}{map[string]interface{}{"HostPort": "bad"}}, 0},
+		{"empty", []any{}, 0},
+		{"string", []any{"8080/tcp"}, 8080},
+		{"map", []any{map[string]any{"HostPort": "9090"}}, 9090},
+		{"invalid string", []any{"abc"}, 0},
+		{"invalid map", []any{map[string]any{"HostPort": "bad"}}, 0},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

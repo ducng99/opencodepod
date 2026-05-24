@@ -1,4 +1,4 @@
-package internal
+package project
 
 import (
 	"encoding/json"
@@ -12,18 +12,22 @@ const (
 	LabelProjectID = "opencodepod.project.id"
 	LabelName      = "opencodepod.project.name"
 	LabelGitRepo   = "opencodepod.project.git_repo"
+	LabelGitBranch = "opencodepod.project.git_branch"
+	LabelGitDepth  = "opencodepod.project.git_depth"
 	LabelImage     = "opencodepod.project.image"
 )
 
 type Project struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	GitRepo string   `json:"git_repo,omitempty"`
-	Status  string   `json:"status"`
-	SSHPort int      `json:"ssh_port"`
-	WebPort int      `json:"web_port"`
-	Volumes []string `json:"volumes"`
-	Image   string   `json:"image"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	GitRepo   string   `json:"git_repo,omitempty"`
+	GitBranch string   `json:"git_branch,omitempty"`
+	GitDepth  int      `json:"git_depth,omitempty"`
+	Status    string   `json:"status"`
+	SSHPort   int      `json:"ssh_port"`
+	WebPort   int      `json:"web_port"`
+	Volumes   []string `json:"volumes"`
+	Image     string   `json:"image"`
 }
 
 type VolumeMount struct {
@@ -32,9 +36,11 @@ type VolumeMount struct {
 }
 
 type CreateRequest struct {
-	Name    string `json:"name"`
-	GitRepo string `json:"git_repo,omitempty"`
-	Image   string `json:"image,omitempty"`
+	Name      string `json:"name"`
+	GitRepo   string `json:"git_repo,omitempty"`
+	GitBranch string `json:"git_branch,omitempty"`
+	GitDepth  int    `json:"git_depth,omitempty"`
+	Image     string `json:"image,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -42,23 +48,33 @@ type UpdateRequest struct {
 }
 
 func LabelsFromProject(p *Project) map[string]string {
-	return map[string]string{
+	labels := map[string]string{
 		LabelManaged:   "true",
 		LabelProjectID: p.ID,
 		LabelName:      p.Name,
 		LabelGitRepo:   p.GitRepo,
+		LabelGitBranch: p.GitBranch,
 		LabelImage:     p.Image,
 	}
+	if p.GitDepth > 0 {
+		labels[LabelGitDepth] = strconv.Itoa(p.GitDepth)
+	}
+	return labels
 }
 
 func ProjectFromLabels(id string, labels map[string]string) *Project {
-	return &Project{
-		ID:      id,
-		Name:    labels[LabelName],
-		GitRepo: labels[LabelGitRepo],
-		Image:   labels[LabelImage],
-		Volumes: ProjectVolumes(id),
+	p := &Project{
+		ID:        id,
+		Name:      labels[LabelName],
+		GitRepo:   labels[LabelGitRepo],
+		GitBranch: labels[LabelGitBranch],
+		Image:     labels[LabelImage],
+		Volumes:   ProjectVolumes(id),
 	}
+	if d, err := strconv.Atoi(labels[LabelGitDepth]); err == nil {
+		p.GitDepth = d
+	}
+	return p
 }
 
 func ProjectVolumeMounts(id string) []VolumeMount {
@@ -89,7 +105,7 @@ func ContainerName(id string) string {
 	return fmt.Sprintf("cp-%s", id)
 }
 
-func ParsePort(ports []interface{}) int {
+func ParsePort(ports []any) int {
 	// ports from nat.PortMap are strings
 	for _, p := range ports {
 		switch v := p.(type) {
@@ -101,7 +117,7 @@ func ParsePort(ports []interface{}) int {
 					return port
 				}
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			if hp, ok := v["HostPort"].(string); ok {
 				port, err := strconv.Atoi(hp)
 				if err == nil {
@@ -113,7 +129,7 @@ func ParsePort(ports []interface{}) int {
 	return 0
 }
 
-func PrettyJSON(v interface{}) string {
+func PrettyJSON(v any) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
 }

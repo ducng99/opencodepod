@@ -1,4 +1,4 @@
-package internal
+package docker
 
 import (
 	"context"
@@ -10,20 +10,23 @@ import (
 	"testing"
 	"time"
 
+	"opencodepod/internal/config"
+	"opencodepod/internal/project"
+
 	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	dockerclient "github.com/moby/moby/client"
 )
 
-// testImage is a lightweight image that stays running so we can test start/stop.
-const testImage = "nginx:alpine"
+// TestImage is a lightweight image that stays running so we can test start/stop.
+const TestImage = "nginx:alpine"
 
-func requireDocker(t *testing.T) *DockerManager {
+func RequireDocker(t *testing.T) *DockerManager {
 	t.Helper()
-	cfg := &Config{
+	cfg := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
+		DefaultImage: TestImage,
 	}
 	dm, err := NewDockerManager(cfg)
 	if err != nil {
@@ -36,49 +39,48 @@ func requireDocker(t *testing.T) *DockerManager {
 	// Verify we can actually reach the daemon by pinging it.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(ctx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(ctx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	// Ensure test image is present; pull if missing.
-	if _, err := dm.client.ImageInspect(ctx, testImage); err != nil {
+	if _, err := dm.Client.ImageInspect(ctx, TestImage); err != nil {
 		if errors.Is(err, errdefs.ErrNotFound) {
 			pullCtx, pullCancel := context.WithTimeout(context.Background(), 120*time.Second)
 			defer pullCancel()
-			pr, err := dm.client.ImagePull(pullCtx, testImage, dockerclient.ImagePullOptions{})
+			pr, err := dm.Client.ImagePull(pullCtx, TestImage, dockerclient.ImagePullOptions{})
 			if err != nil {
-				t.Fatalf("unable to pull test image %s: %v", testImage, err)
+				t.Fatalf("unable to pull test image %s: %v", TestImage, err)
 			}
 			_, _ = io.Copy(io.Discard, pr)
 			_ = pr.Close()
 		} else {
-			t.Fatalf("unable to inspect test image %s: %v", testImage, err)
+			t.Fatalf("unable to inspect test image %s: %v", TestImage, err)
 		}
 	}
 
 	return dm
 }
 
-func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
+func CleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Remove container(s)
-	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, id))
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
 	if err != nil {
 		t.Errorf("cleanup container list failed: %v", err)
 		return
 	}
 	for _, c := range result.Items {
-		if _, err := dm.client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
+		if _, err := dm.Client.ContainerRemove(ctx, c.ID, dockerclient.ContainerRemoveOptions{Force: true}); err != nil {
 			t.Errorf("cleanup container remove failed: %v", err)
 		}
 	}
-	// Remove volumes
-	for _, vol := range ProjectVolumes(id) {
-		if _, err := dm.client.VolumeRemove(ctx, vol, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+	for _, vol := range project.ProjectVolumes(id) {
+		if _, err := dm.Client.VolumeRemove(ctx, vol, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
 			t.Errorf("cleanup volume %s remove failed: %v", vol, err)
 		}
 	}
@@ -86,7 +88,7 @@ func cleanupTestProject(t *testing.T, dm *DockerManager, id string) {
 
 func TestDockerManager_ListProjects(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
 	projects, err := dm.ListProjects(ctx)
@@ -98,18 +100,18 @@ func TestDockerManager_ListProjects(t *testing.T) {
 }
 
 func TestDockerManager_CreateProject_PullsImage(t *testing.T) {
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
 	// Remove the image if present so we can test auto-pull.
-	_, _ = dm.client.ImageRemove(ctx, testImage, dockerclient.ImageRemoveOptions{Force: true})
+	_, _ = dm.Client.ImageRemove(ctx, TestImage, dockerclient.ImageRemoveOptions{Force: true})
 
-	req := &CreateRequest{Name: "test-autopull", Image: testImage}
+	req := &project.CreateRequest{Name: "test-autopull", Image: TestImage}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed to auto-pull image: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	if p.Status == "" {
 		t.Error("expected non-empty status")
@@ -118,10 +120,10 @@ func TestDockerManager_CreateProject_PullsImage(t *testing.T) {
 
 func TestDockerManager_CreateProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-create"}
+	req := &project.CreateRequest{Name: "test-create"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
@@ -129,7 +131,7 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if p.ID == "" {
 		t.Fatal("expected project ID")
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	if p.Name != "test-create" {
 		t.Errorf("expected name test-create, got %s", p.Name)
@@ -137,11 +139,11 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if len(p.Volumes) != 2 {
 		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
 	}
-	if p.Volumes[0] != WorkspacesVolumeName(p.ID) {
-		t.Errorf("expected volume %s, got %s", WorkspacesVolumeName(p.ID), p.Volumes[0])
+	if p.Volumes[0] != project.WorkspacesVolumeName(p.ID) {
+		t.Errorf("expected volume %s, got %s", project.WorkspacesVolumeName(p.ID), p.Volumes[0])
 	}
-	if p.Volumes[1] != OpencodeSessionsVolumeName(p.ID) {
-		t.Errorf("expected home volume %s, got %s", OpencodeSessionsVolumeName(p.ID), p.Volumes[1])
+	if p.Volumes[1] != project.OpencodeSessionsVolumeName(p.ID) {
+		t.Errorf("expected home volume %s, got %s", project.OpencodeSessionsVolumeName(p.ID), p.Volumes[1])
 	}
 	if p.Status == "" {
 		t.Error("expected non-empty status")
@@ -154,8 +156,8 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	}
 
 	// Verify container exists with correct labels
-	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, p.ID))
-	result, err := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, p.ID))
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
 	if err != nil {
 		t.Fatalf("container list failed: %v", err)
 	}
@@ -163,16 +165,16 @@ func TestDockerManager_CreateProject(t *testing.T) {
 		t.Fatalf("expected 1 container, got %d", len(result.Items))
 	}
 	c := result.Items[0]
-	if c.Labels[LabelProjectID] != p.ID {
+	if c.Labels[project.LabelProjectID] != p.ID {
 		t.Errorf("expected container label project.id=%s", p.ID)
 	}
-	if c.Labels[LabelName] != "test-create" {
+	if c.Labels[project.LabelName] != "test-create" {
 		t.Errorf("expected container label project.name=test-create")
 	}
 
 	// Verify volumes exist
 	for _, vol := range p.Volumes {
-		volResult, err := dm.client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
+		volResult, err := dm.Client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
 		if err != nil {
 			t.Fatalf("volume inspect failed for %s: %v", vol, err)
 		}
@@ -185,15 +187,15 @@ func TestDockerManager_CreateProject(t *testing.T) {
 
 func TestDockerManager_GetProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-get"}
+	req := &project.CreateRequest{Name: "test-get"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	got, err := dm.GetProject(ctx, p.ID)
 	if err != nil {
@@ -215,15 +217,15 @@ func TestDockerManager_GetProject(t *testing.T) {
 
 func TestDockerManager_StopStartProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-lifecycle"}
+	req := &project.CreateRequest{Name: "test-lifecycle"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	// Stop
 	stopped, err := dm.StopProject(ctx, p.ID)
@@ -255,10 +257,10 @@ func TestDockerManager_StopStartProject(t *testing.T) {
 
 func TestDockerManager_DeleteProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-delete"}
+	req := &project.CreateRequest{Name: "test-delete"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
@@ -270,14 +272,14 @@ func TestDockerManager_DeleteProject(t *testing.T) {
 	}
 
 	// Verify gone
-	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", LabelProjectID, id))
-	result, _ := dm.client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, id))
+	result, _ := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
 	if len(result.Items) > 0 {
 		t.Errorf("expected 0 containers after delete, got %d", len(result.Items))
 	}
 
-	for _, vol := range ProjectVolumes(id) {
-		_, err = dm.client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
+	for _, vol := range project.ProjectVolumes(id) {
+		_, err = dm.Client.VolumeInspect(ctx, vol, dockerclient.VolumeInspectOptions{})
 		if err == nil {
 			t.Errorf("expected volume %s to be removed", vol)
 		}
@@ -288,9 +290,9 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	cfgWithSSH := &Config{
+	cfgWithSSH := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
+		DefaultImage: TestImage,
 		SSHPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test",
 	}
 	dm, err := NewDockerManager(cfgWithSSH)
@@ -303,19 +305,19 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
-	req := &CreateRequest{Name: "test-ssh-key"}
+	req := &project.CreateRequest{Name: "test-ssh-key"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	// Inspect container to verify the SSH_PUBLIC_KEY env var is present.
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("container inspect failed: %v", err)
 	}
@@ -339,11 +341,11 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 	ctx := context.Background()
 
 	expectedKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI testkey"
-	cfgWithKey := &Config{
+	cfgWithKey := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
-		Git: GitConfig{
-			Auth: GitAuthConfig{
+		DefaultImage: TestImage,
+		Git: config.GitConfig{
+			Auth: config.GitAuthConfig{
 				SSHKey:     expectedKey,
 				SSHKeyPath: "/tmp/git_ssh_key",
 			},
@@ -359,19 +361,19 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
-	req := &CreateRequest{Name: "test-git-ssh-key"}
+	req := &project.CreateRequest{Name: "test-git-ssh-key"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	// Verify the key file exists inside the container.
-	execCreateResult, err := dm.client.ExecCreate(ctx, ContainerName(p.ID), dockerclient.ExecCreateOptions{
+	execCreateResult, err := dm.Client.ExecCreate(ctx, project.ContainerName(p.ID), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
 		Cmd:          []string{"cat", cfgWithKey.Git.Auth.SSHKeyPath},
@@ -380,7 +382,7 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 		t.Fatalf("container exec create failed: %v", err)
 	}
 
-	attachResult, err := dm.client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	attachResult, err := dm.Client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
 	if err != nil {
 		t.Fatalf("container exec attach failed: %v", err)
 	}
@@ -402,12 +404,12 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 	ctx := context.Background()
 
 	expectedContent := "https://myuser:ghp_xxx@github.com\n"
-	cfgWithCreds := &Config{
+	cfgWithCreds := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
-		Git: GitConfig{
-			Auth: GitAuthConfig{
-				Credentials: map[string]GitCredential{
+		DefaultImage: TestImage,
+		Git: config.GitConfig{
+			Auth: config.GitAuthConfig{
+				Credentials: map[string]config.GitCredential{
 					"github.com": {
 						Username: "myuser",
 						Password: "ghp_xxx",
@@ -426,19 +428,19 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
-	req := &CreateRequest{Name: "test-git-credentials"}
+	req := &project.CreateRequest{Name: "test-git-credentials"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	// Verify the credentials file exists inside the container.
-	execCreateResult, err := dm.client.ExecCreate(ctx, ContainerName(p.ID), dockerclient.ExecCreateOptions{
+	execCreateResult, err := dm.Client.ExecCreate(ctx, project.ContainerName(p.ID), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
 		Cmd:          []string{"cat", "/home/coder/.git-credentials"},
@@ -447,7 +449,7 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 		t.Fatalf("container exec create failed: %v", err)
 	}
 
-	attachResult, err := dm.client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	attachResult, err := dm.Client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
 	if err != nil {
 		t.Fatalf("container exec attach failed: %v", err)
 	}
@@ -467,10 +469,10 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 
 func TestDockerManager_containerToProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	c := &container.Summary{
 		ID:     "cid",
-		Labels: map[string]string{LabelProjectID: "pid", LabelName: "n"},
+		Labels: map[string]string{project.LabelProjectID: "pid", project.LabelName: "n"},
 		State:  container.StateRunning,
 		Ports:  []container.PortSummary{{PrivatePort: 22, PublicPort: 10022}, {PrivatePort: 8080, PublicPort: 18080}},
 	}
@@ -491,15 +493,15 @@ func TestDockerManager_containerToProject(t *testing.T) {
 
 func TestDockerManager_refreshState(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-refresh"}
+	req := &project.CreateRequest{Name: "test-refresh"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	refreshed, err := dm.refreshState(ctx, p)
 	if err != nil {
@@ -547,9 +549,9 @@ func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	cfgWithHosts := &Config{
+	cfgWithHosts := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
+		DefaultImage: TestImage,
 		Hosts: map[string]string{
 			"myapp.local": "192.168.1.100",
 			"db.local":    "10.0.0.5",
@@ -565,19 +567,19 @@ func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
-	req := &CreateRequest{Name: "test-hosts"}
+	req := &project.CreateRequest{Name: "test-hosts"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	// Inspect container to verify ExtraHosts are present.
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("container inspect failed: %v", err)
 	}
@@ -607,13 +609,13 @@ func TestDockerManager_CreateProject_WithGitUserEnv(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	cfgWithGitUser := &Config{
+	cfgWithGitUser := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
-		Git: GitConfig{
+		DefaultImage: TestImage,
+		Git: config.GitConfig{
 			UserName:  "Test User",
 			UserEmail: "test@example.com",
-			GPG: GPGConfig{
+			GPG: config.GPGConfig{
 				KeyID: "ABCDEF1234567890",
 			},
 		},
@@ -628,18 +630,18 @@ func TestDockerManager_CreateProject_WithGitUserEnv(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
-	req := &CreateRequest{Name: "test-git-user-env"}
+	req := &project.CreateRequest{Name: "test-git-user-env"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("container inspect failed: %v", err)
 	}
@@ -670,11 +672,11 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	ctx := context.Background()
 
 	expectedKey := "-----BEGIN PGP PRIVATE KEY BLOCK-----\ntest-gpg-key-content\n-----END PGP PRIVATE KEY BLOCK-----"
-	cfgWithGPG := &Config{
+	cfgWithGPG := &config.Config{
 		ListenAddr:   ":8080",
-		DefaultImage: testImage,
-		Git: GitConfig{
-			GPG: GPGConfig{
+		DefaultImage: TestImage,
+		Git: config.GitConfig{
+			GPG: config.GPGConfig{
 				PrivateKey: expectedKey,
 				KeyID:      "TESTKEY123",
 			},
@@ -690,39 +692,39 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := dm.client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
+	if _, err := dm.Client.Ping(pingCtx, dockerclient.PingOptions{}); err != nil {
 		t.Fatalf("docker daemon unreachable: %v", err)
 	}
 
 	// Create a container without starting it, then create the .gnupg directory manually.
 	id := generateID(8)
-	p := &Project{
+	p := &project.Project{
 		ID:      id,
 		Name:    "test-gpg-key",
-		Image:   testImage,
-		Volumes: ProjectVolumes(id),
+		Image:   TestImage,
+		Volumes: project.ProjectVolumes(id),
 		Status:  "creating",
 	}
 
 	for _, vol := range p.Volumes {
-		_, err := dm.client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
+		_, err := dm.Client.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
 			Name:   vol,
 			Driver: "local",
 			Labels: map[string]string{
-				LabelManaged:   "true",
-				LabelProjectID: id,
-				LabelName:      p.Name,
+				project.LabelManaged:   "true",
+				project.LabelProjectID: id,
+				project.LabelName:      p.Name,
 			},
 		})
 		if err != nil {
 			for _, v := range p.Volumes {
-				_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+				_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 			}
 			t.Fatalf("volume create: %v", err)
 		}
 	}
 
-	pr, err := dm.client.ImagePull(ctx, testImage, dockerclient.ImagePullOptions{})
+	pr, err := dm.Client.ImagePull(ctx, TestImage, dockerclient.ImagePullOptions{})
 	if err == nil {
 		_, _ = io.Copy(io.Discard, pr)
 		_ = pr.Close()
@@ -739,14 +741,14 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	env := []string{"GIT_GPG_KEY_ID=TESTKEY123"}
 
 	binds := make([]string, 0, len(p.Volumes))
-	for _, mount := range ProjectVolumeMounts(p.ID) {
+	for _, mount := range project.ProjectVolumeMounts(p.ID) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	extraHosts := []string{"host.docker.internal:host-gateway"}
 
 	containerConfig := &container.Config{
-		Image:        testImage,
-		Labels:       LabelsFromProject(p),
+		Image:        TestImage,
+		Labels:       project.LabelsFromProject(p),
 		ExposedPorts: exposedPorts,
 		Env:          env,
 	}
@@ -759,46 +761,46 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 		},
 	}
 
-	createResult, err := dm.client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
+	createResult, err := dm.Client.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Config:     containerConfig,
 		HostConfig: hostConfig,
-		Name:       ContainerName(id),
+		Name:       project.ContainerName(id),
 	})
 	if err != nil {
 		for _, v := range p.Volumes {
-			_, _ = dm.client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
+			_, _ = dm.Client.VolumeRemove(ctx, v, dockerclient.VolumeRemoveOptions{Force: true})
 		}
 		t.Fatalf("container create: %v", err)
 	}
 
-	if _, err := dm.client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if _, err := dm.Client.ContainerStart(ctx, createResult.ID, dockerclient.ContainerStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("container start: %v", err)
 	}
 
 	// Create the .gnupg directory before copying the key.
-	execCreateResult, err := dm.client.ExecCreate(ctx, createResult.ID, dockerclient.ExecCreateOptions{
+	execCreateResult, err := dm.Client.ExecCreate(ctx, createResult.ID, dockerclient.ExecCreateOptions{
 		Cmd: []string{"mkdir", "-p", "/home/coder/.gnupg"},
 	})
 	if err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("exec create failed: %v", err)
 	}
-	if _, err := dm.client.ExecStart(ctx, execCreateResult.ID, dockerclient.ExecStartOptions{}); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+	if _, err := dm.Client.ExecStart(ctx, execCreateResult.ID, dockerclient.ExecStartOptions{}); err != nil {
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("exec start failed: %v", err)
 	}
 
 	// Now copy the GPG key.
 	if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
-		_, _ = dm.client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("copyGPGKey failed: %v", err)
 	}
 
-	defer cleanupTestProject(t, dm, id)
+	defer CleanupTestProject(t, dm, id)
 
 	// Verify the key file exists inside the container.
-	execCreateResult, err = dm.client.ExecCreate(ctx, ContainerName(id), dockerclient.ExecCreateOptions{
+	execCreateResult, err = dm.Client.ExecCreate(ctx, project.ContainerName(id), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
 		Cmd:          []string{"cat", "/home/coder/.gnupg/private.key"},
@@ -807,7 +809,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 		t.Fatalf("container exec create failed: %v", err)
 	}
 
-	attachResult, err := dm.client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	attachResult, err := dm.Client.ExecAttach(ctx, execCreateResult.ID, dockerclient.ExecAttachOptions{TTY: true})
 	if err != nil {
 		t.Fatalf("container exec attach failed: %v", err)
 	}
@@ -826,15 +828,15 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 
 func TestDockerManager_UpgradeProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-upgrade"}
+	req := &project.CreateRequest{Name: "test-upgrade"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
 	originalID := p.ID
 	originalSSH := p.SSHPort
@@ -872,17 +874,17 @@ func TestDockerManager_UpgradeProject(t *testing.T) {
 
 func TestDockerManager_RenameProject(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	req := &CreateRequest{Name: "test-rename"}
+	req := &project.CreateRequest{Name: "test-rename"}
 	p, err := dm.CreateProject(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateProject failed: %v", err)
 	}
-	defer cleanupTestProject(t, dm, p.ID)
+	defer CleanupTestProject(t, dm, p.ID)
 
-	renamed, err := dm.RenameProject(ctx, p.ID, &UpdateRequest{Name: "renamed-project"})
+	renamed, err := dm.RenameProject(ctx, p.ID, &project.UpdateRequest{Name: "renamed-project"})
 	if err != nil {
 		t.Fatalf("RenameProject failed: %v", err)
 	}
@@ -897,22 +899,22 @@ func TestDockerManager_RenameProject(t *testing.T) {
 	}
 
 	// Verify container label was updated
-	inspectResult, err := dm.client.ContainerInspect(ctx, ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
+	inspectResult, err := dm.Client.ContainerInspect(ctx, project.ContainerName(p.ID), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatalf("container inspect failed: %v", err)
 	}
 	inspect := inspectResult.Container
-	if inspect.Config.Labels[LabelName] != "renamed-project" {
-		t.Errorf("expected container label project.name=renamed-project, got %s", inspect.Config.Labels[LabelName])
+	if inspect.Config.Labels[project.LabelName] != "renamed-project" {
+		t.Errorf("expected container label project.name=renamed-project, got %s", inspect.Config.Labels[project.LabelName])
 	}
 }
 
 func TestDockerManager_RenameProject_NotFound(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
-	_, err := dm.RenameProject(ctx, "nonexistent-id", &UpdateRequest{Name: "new-name"})
+	_, err := dm.RenameProject(ctx, "nonexistent-id", &project.UpdateRequest{Name: "new-name"})
 	if err == nil {
 		t.Fatal("expected error for nonexistent project")
 	}
@@ -923,7 +925,7 @@ func TestDockerManager_RenameProject_NotFound(t *testing.T) {
 
 func TestDockerManager_UpgradeProject_NotFound(t *testing.T) {
 	t.Parallel()
-	dm := requireDocker(t)
+	dm := RequireDocker(t)
 	ctx := context.Background()
 
 	_, err := dm.UpgradeProject(ctx, "nonexistent-id")

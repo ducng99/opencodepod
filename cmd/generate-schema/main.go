@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"strings"
 
-	"opencodepod/internal"
+	"opencodepod/internal/config"
 )
 
 func main() {
-	schema := generateSchema(reflect.TypeOf(internal.Config{}))
+	schema := generateSchema(reflect.TypeOf(config.Config{}))
 	schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 	schema["title"] = "Config"
 	schema["description"] = "OpenCodePod server configuration schema."
@@ -22,42 +22,42 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.WriteFile("config.schema.json", out, 0644); err != nil {
+	if err := os.WriteFile("config.schema.json", out, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "write error: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("Schema written to config.schema.json")
 }
 
-func generateSchema(t reflect.Type) map[string]interface{} {
+func generateSchema(t reflect.Type) map[string]any {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 
 	switch t.Kind() {
 	case reflect.String:
-		return map[string]interface{}{"type": "string"}
+		return map[string]any{"type": "string"}
 	case reflect.Bool:
-		return map[string]interface{}{"type": "boolean"}
+		return map[string]any{"type": "boolean"}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return map[string]interface{}{"type": "integer"}
+		return map[string]any{"type": "integer"}
 	case reflect.Float32, reflect.Float64:
-		return map[string]interface{}{"type": "number"}
+		return map[string]any{"type": "number"}
 	case reflect.Slice, reflect.Array:
 		items := generateSchema(t.Elem())
-		return map[string]interface{}{
+		return map[string]any{
 			"type":  "array",
 			"items": items,
 		}
 	case reflect.Map:
 		additional := generateSchema(t.Elem())
-		return map[string]interface{}{
+		return map[string]any{
 			"type":                 "object",
 			"additionalProperties": additional,
 		}
 	case reflect.Struct:
-		properties := map[string]interface{}{}
+		properties := map[string]any{}
 		required := []string{}
 
 		for i := 0; i < t.NumField(); i++ {
@@ -88,7 +88,7 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 			}
 		}
 
-		result := map[string]interface{}{
+		result := map[string]any{
 			"type":       "object",
 			"properties": properties,
 		}
@@ -97,6 +97,6 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 		}
 		return result
 	default:
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 }

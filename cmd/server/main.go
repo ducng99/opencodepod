@@ -10,22 +10,24 @@ import (
 	"syscall"
 
 	"opencodepod/frontend"
-	"opencodepod/internal"
+	"opencodepod/internal/config"
+	"opencodepod/internal/docker"
+	"opencodepod/internal/handlers"
 )
 
 func main() {
-	cfg, err := internal.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	docker, err := internal.NewDockerManager(cfg)
+	dm, err := docker.NewDockerManager(cfg)
 	if err != nil {
 		log.Fatalf("docker init: %v", err)
 	}
-	defer docker.Close()
+	defer dm.Close()
 
-	server := internal.NewServer(cfg, docker)
+	server := handlers.NewServer(cfg, dm)
 
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)

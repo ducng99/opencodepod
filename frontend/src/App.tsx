@@ -38,11 +38,19 @@ export function App() {
     return () => clearInterval(id);
   }, [refresh]);
 
-  const handleCreate = async (name: string, gitRepo: string, image: string) => {
+  const handleCreate = async (
+    name: string,
+    gitRepo: string,
+    image: string,
+    branch: string,
+    depth: number | undefined
+  ) => {
     await createProject({
       name,
       git_repo: gitRepo || undefined,
       image: image || undefined,
+      git_branch: branch || undefined,
+      git_depth: depth,
     });
     await refresh();
   };
@@ -118,8 +126,8 @@ export function App() {
           title="New Project"
         >
           <CreateProjectForm
-            onSubmit={async (name, gitRepo, image) => {
-              await handleCreate(name, gitRepo, image);
+            onSubmit={async (name, gitRepo, image, branch, depth) => {
+              await handleCreate(name, gitRepo, image, branch, depth);
               setModalOpen(false);
             }}
             onCancel={() => setModalOpen(false)}

@@ -87,7 +87,7 @@ Note: The content will be trimmed for both prefix and suffix.
       "credentials": {
         "github.com": {
           "username": "myuser",
-          "password": "github_ghp_xxx"
+          "password": "github_pat_xxx"
         },
         "gitlab.company.internal": {
           "username": "me",
