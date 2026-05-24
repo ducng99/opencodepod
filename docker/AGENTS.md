@@ -1,4 +1,4 @@
-# CodePod Container — Agent Notes
+# Agent Notes
 
 This is the isolated Docker workspace for a coding agent. You have full sudo access and network connectivity.
 
@@ -14,7 +14,7 @@ This is the isolated Docker workspace for a coding agent. You have full sudo acc
 
 Some core build/runtime stack:
 - `git`, `curl`, `wget`, `build-essential`
-- `python3`, `python3-pip`, `python3-venv`
+- `uv` (Astral's Python toolchain)
 - `nodejs` (via apt — may be an older LTS)
 - `unzip`, `zip`, `jq`, `htop`, `tree`, `ripgrep`
 

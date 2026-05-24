@@ -12,9 +12,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     htop \
     tree \
     sudo \
-    python3 \
-    python3-pip \
-    python3-venv \
     nodejs \
     vim \
     nano \
@@ -67,6 +64,7 @@ RUN mkdir -p /workspaces \
 USER coder
 ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
 
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.jsonc
