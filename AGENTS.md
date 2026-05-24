@@ -29,7 +29,7 @@ No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 
 ```bash
 # Run all tests (long timeout recommended — container pulls are slow)
-go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
+go test ./... -v -count=1 -parallel 4 -timeout 5m
 ```
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)
@@ -44,7 +44,7 @@ go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
 - **Go 1.26+ routing**: handlers use `http.ServeMux` path patterns like `/api/projects/{id}`
 - **Config**: loaded from `config.json` with JSON keys in snake_case (`listen_addr`, `default_image`, etc.). Missing fields fall back to hard-coded defaults.
 - **File placeholders**: config fields support `{file:<host_path>}` syntax — the file content is inlined at load time. Relative paths resolve against `config.json`'s directory.
-- **Schema**: whenever `internal/config.go` structs or their `desc` tags change, regenerate `config.schema.json` with `go run ./cmd/generate-schema`.
+- **Schema**: whenever `internal/config/config.go` structs or their `desc` tags change, regenerate `config.schema.json` with `go run ./cmd/generate-schema`.
 - **Git auth**: `git.auth.ssh_key` (inline private key or `{file:...}`) is copied into containers via `CopyToContainer` before start, never as an env var. `git.auth.ssh_key_path` (default `/home/coder/.ssh/id_ed25519`) controls the destination inside the container.
 
 ## Frontend

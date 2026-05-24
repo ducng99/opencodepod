@@ -214,7 +214,7 @@ docker build -t opencodepod-client:latest -f docker/Dockerfile ./docker
 
 ```bash
 # Run all tests
-go test ./internal/ -v -count=1 -parallel 4 -timeout 5m
+go test ./... -v -count=1 -parallel 4 -timeout 5m
 ```
 
 Integration tests use `nginx:alpine` as a test image and create real containers/volumes, cleaning them up afterward. Most tests are marked `t.Parallel()` for concurrent execution.
