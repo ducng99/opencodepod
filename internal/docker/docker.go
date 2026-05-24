@@ -227,6 +227,24 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".git-credentials", content.Bytes())
 }
 
+func (dm *DockerManager) buildBinds(id string) []string {
+	binds := make([]string, 0, len(project.ProjectVolumeMounts(id))+len(dm.Cfg.Mounts))
+	for _, mount := range project.ProjectVolumeMounts(id) {
+		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
+	}
+	for _, m := range dm.Cfg.Mounts {
+		if m.Source == "" || m.Target == "" {
+			continue
+		}
+		mode := "ro"
+		if !m.ReadOnly {
+			mode = "rw"
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, mode))
+	}
+	return binds
+}
+
 func generateID(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)

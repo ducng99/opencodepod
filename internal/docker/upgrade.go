@@ -61,7 +61,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 
 	hostConfig := &container.HostConfig{
 		PortBindings:  inspect.HostConfig.PortBindings,
-		Binds:         inspect.HostConfig.Binds,
+		Binds:         dm.buildBinds(id),
 		ExtraHosts:    inspect.HostConfig.ExtraHosts,
 		RestartPolicy: inspect.HostConfig.RestartPolicy,
 	}

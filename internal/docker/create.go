@@ -90,21 +90,6 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		Env:          env,
 	}
 
-	binds := make([]string, 0, len(p.Volumes)+len(dm.Cfg.Mounts))
-	for _, mount := range project.ProjectVolumeMounts(p.ID) {
-		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
-	}
-	for _, m := range dm.Cfg.Mounts {
-		if m.Source == "" || m.Target == "" {
-			continue
-		}
-		mode := "ro"
-		if !m.ReadOnly {
-			mode = "rw"
-		}
-		binds = append(binds, fmt.Sprintf("%s:%s:%s", m.Source, m.Target, mode))
-	}
-
 	extraHosts := []string{"host.docker.internal:host-gateway"}
 	for host, ip := range dm.Cfg.Hosts {
 		extraHosts = append(extraHosts, fmt.Sprintf("%s:%s", host, ip))
@@ -112,7 +97,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 
 	hostConfig := &container.HostConfig{
 		PortBindings: portBindings,
-		Binds:        binds,
+		Binds:        dm.buildBinds(p.ID),
 		ExtraHosts:   extraHosts,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
