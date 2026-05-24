@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "**/*_test.go"
+      - "**/*.go"
       - "go.mod"
       - "go.sum"
       - ".github/workflows/test.yml"
