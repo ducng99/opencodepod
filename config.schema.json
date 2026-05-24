@@ -47,6 +47,10 @@
               "description": "GPG key ID used for commit signing.",
               "type": "string"
             },
+            "passphrase": {
+              "description": "Passphrase for the GPG private key.",
+              "type": "string"
+            },
             "private_key": {
               "description": "Inline GPG private key for signing commits.",
               "type": "string"

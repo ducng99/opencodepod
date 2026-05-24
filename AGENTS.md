@@ -30,6 +30,9 @@ No Makefile or task runner. Dockerfile is a standard multi-stage Alpine build.
 ```bash
 # Run all tests (long timeout recommended — container pulls are slow)
 go test ./... -v -count=1 -parallel 4 -timeout 5m
+
+# Run specific tests (by func name partial match)
+go test ./... -v -count=1 -parallel 4 -timeout 5m -run 'TestConfig|Test...'
 ```
 
 - Integration tests use `nginx:alpine` as test image (auto-pulled if missing)

@@ -59,6 +59,7 @@ Note: The content will be trimmed for both prefix and suffix.
 | `git.user_email` | string | *(empty)* | Git commit author email. |
 | `git.gpg.key_id` | string | *(empty)* | GPG key ID used for commit signing. |
 | `git.gpg.private_key` | string | *(empty)* | Inline GPG private key for signing commits. |
+| `git.gpg.passphrase` | string | *(empty)* | Passphrase for the GPG private key. Copied into containers so `git commit -S` can run non-interactively. |
 
 ### Example `config.json`
 
@@ -97,7 +98,8 @@ Note: The content will be trimmed for both prefix and suffix.
     },
     "gpg": {
       "key_id": "A1B2C3D4E5F6",
-      "private_key": "{file:<host_path_to_gpg_key>}"
+      "private_key": "{file:<host_path_to_gpg_key>}",
+      "passphrase": "{file:<host_path_to_gpg_passphrase>}"
     }
   }
 }

@@ -146,6 +146,14 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		}
 	}
 
+	// Inject GPG passphrase directly into container filesystem before start.
+	if dm.Cfg.Git.GPG.Passphrase != "" {
+		if err := dm.copyGPGPassphrase(ctx, createResult.ID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy gpg passphrase: %w", err)
+		}
+	}
+
 	// Inject Git HTTP credentials directly into container filesystem before start.
 	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {

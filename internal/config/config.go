@@ -31,6 +31,7 @@ type GitAuthConfig struct {
 type GPGConfig struct {
 	KeyID      string `json:"key_id" desc:"GPG key ID used for commit signing."`
 	PrivateKey string `json:"private_key" desc:"Inline GPG private key for signing commits."`
+	Passphrase string `json:"passphrase" desc:"Passphrase for the GPG private key."`
 }
 
 type GitConfig struct {

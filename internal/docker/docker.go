@@ -176,6 +176,33 @@ func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) err
 	return err
 }
 
+func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID string) error {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	content := []byte(dm.Cfg.Git.GPG.Passphrase)
+	hdr := &tar.Header{
+		Name: ".gnupg/gpg_passphrase.key",
+		Mode: 0o600,
+		Size: int64(len(content)),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if _, err := tw.Write(content); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+
+	_, err := dm.Client.CopyToContainer(ctx, containerID, dockerclient.CopyToContainerOptions{
+		DestinationPath: "/home/coder",
+		Content:         &buf,
+	})
+	return err
+}
+
 func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)

@@ -101,6 +101,13 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 		}
 	}
 
+	if dm.Cfg.Git.GPG.Passphrase != "" {
+		if err := dm.copyGPGPassphrase(ctx, createResult.ID); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
+			return nil, fmt.Errorf("copy gpg passphrase: %w", err)
+		}
+	}
+
 	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, createResult.ID); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
