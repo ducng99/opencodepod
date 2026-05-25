@@ -74,7 +74,6 @@ func (dm *DockerManager) containerToProject(c *container.Summary) *project.Proje
 		healthStatus = string(c.Health.Status)
 	}
 	p.Status = computeStatus(string(c.State), healthStatus)
-	p.ContainerUser = dm.Cfg.ContainerUser
 
 	// Parse ports from container summary (fast path)
 	for _, port := range c.Ports {
@@ -156,7 +155,7 @@ func (dm *DockerManager) stopAndRemoveContainer(ctx context.Context, containerID
 	return nil
 }
 
-func (dm *DockerManager) injectSecrets(ctx context.Context, containerID string) error {
+func (dm *DockerManager) injectSecrets(ctx context.Context, containerID, containerUser string) error {
 	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, containerID); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
@@ -164,19 +163,19 @@ func (dm *DockerManager) injectSecrets(ctx context.Context, containerID string) 
 		}
 	}
 	if dm.Cfg.Git.GPG.PrivateKey != "" {
-		if err := dm.copyGPGKey(ctx, containerID); err != nil {
+		if err := dm.copyGPGKey(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
 	if dm.Cfg.Git.GPG.Passphrase != "" {
-		if err := dm.copyGPGPassphrase(ctx, containerID); err != nil {
+		if err := dm.copyGPGPassphrase(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy gpg passphrase: %w", err)
 		}
 	}
 	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
-		if err := dm.copyGitCredentials(ctx, containerID); err != nil {
+		if err := dm.copyGitCredentials(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy git credentials: %w", err)
 		}
@@ -220,22 +219,26 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 	return writeTarToContainer(ctx, dm.Client, containerID, filepath.Dir(dm.Cfg.Git.Auth.SSHKeyPath), filepath.Base(dm.Cfg.Git.Auth.SSHKeyPath), []byte(dm.Cfg.Git.Auth.SSHKey))
 }
 
-func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
+func (dm *DockerManager) homeDir(containerUser string) string {
+	return "/home/" + containerUser
 }
 
-func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
+func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID, containerUser string) error {
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
 }
 
-func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {
+func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID, containerUser string) error {
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
+}
+
+func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID, containerUser string) error {
 	var content bytes.Buffer
 	for host, cred := range dm.Cfg.Git.Auth.Credentials {
 		username := url.QueryEscape(cred.Username)
 		password := url.QueryEscape(cred.Password)
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
 	}
-	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".git-credentials", content.Bytes())
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".git-credentials", content.Bytes())
 }
 
 func (dm *DockerManager) buildEnv(p *project.Project) []string {
@@ -250,9 +253,9 @@ func (dm *DockerManager) buildEnv(p *project.Project) []string {
 	return env
 }
 
-func (dm *DockerManager) buildBinds(id string) []string {
-	binds := make([]string, 0, len(project.ProjectVolumeMounts(id, dm.Cfg.ContainerUser))+len(dm.Cfg.Mounts))
-	for _, mount := range project.ProjectVolumeMounts(id, dm.Cfg.ContainerUser) {
+func (dm *DockerManager) buildBinds(id, containerUser string) []string {
+	binds := make([]string, 0, len(project.ProjectVolumeMounts(id, containerUser))+len(dm.Cfg.Mounts))
+	for _, mount := range project.ProjectVolumeMounts(id, containerUser) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	for _, m := range dm.Cfg.Mounts {

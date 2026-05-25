@@ -8,6 +8,7 @@ interface Props {
         image: string,
         branch: string,
         depth: number | undefined,
+        containerUser: string,
     ) => Promise<void>;
     onCancel: () => void;
 }
@@ -18,6 +19,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
     const [image, setImage] = useState("");
     const [branch, setBranch] = useState("");
     const [depth, setDepth] = useState("");
+    const [containerUser, setContainerUser] = useState("");
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -41,12 +43,13 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         }
         setLoading(true);
         try {
-            await onSubmit(trimmed, gitRepo.trim(), image.trim(), branch.trim(), depthNum);
+            await onSubmit(trimmed, gitRepo.trim(), image.trim(), branch.trim(), depthNum, containerUser.trim());
             setName("");
             setGitRepo("");
             setImage("");
             setBranch("");
             setDepth("");
+            setContainerUser("");
             setAdvancedOpen(false);
         }
         catch (err) {
@@ -155,6 +158,19 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                     placeholder="default image (optional)"
                     value={image}
                     onChange={e => setImage(e.target.value)}
+                    className="form-input"
+                />
+            </div>
+
+            <div>
+                <label className="form-label">
+                    Container user
+                </label>
+                <input
+                    type="text"
+                    placeholder="default user (optional)"
+                    value={containerUser}
+                    onChange={e => setContainerUser(e.target.value)}
                     className="form-input"
                 />
             </div>

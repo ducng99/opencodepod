@@ -47,7 +47,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 
 	hostConfig := &container.HostConfig{
 		PortBindings:  inspect.HostConfig.PortBindings,
-		Binds:         dm.buildBinds(id),
+		Binds:         dm.buildBinds(id, p.ContainerUser),
 		ExtraHosts:    inspect.HostConfig.ExtraHosts,
 		RestartPolicy: inspect.HostConfig.RestartPolicy,
 	}
@@ -61,7 +61,7 @@ func (dm *DockerManager) UpgradeProject(ctx context.Context, id string) (*projec
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if err := dm.injectSecrets(ctx, createResult.ID); err != nil {
+	if err := dm.injectSecrets(ctx, createResult.ID, p.ContainerUser); err != nil {
 		return nil, err
 	}
 

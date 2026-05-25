@@ -14,7 +14,8 @@ const (
 	LabelGitRepo   = "opencodepod.project.git_repo"
 	LabelGitBranch = "opencodepod.project.git_branch"
 	LabelGitDepth  = "opencodepod.project.git_depth"
-	LabelImage     = "opencodepod.project.image"
+	LabelImage         = "opencodepod.project.image"
+	LabelContainerUser = "opencodepod.project.container_user"
 )
 
 type Git struct {
@@ -41,9 +42,10 @@ type VolumeMount struct {
 }
 
 type CreateRequest struct {
-	Name  string `json:"name"`
-	Git   Git    `json:"git"`
-	Image string `json:"image,omitempty"`
+	Name          string `json:"name"`
+	Git           Git    `json:"git"`
+	Image         string `json:"image,omitempty"`
+	ContainerUser string `json:"container_user,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -52,12 +54,13 @@ type UpdateRequest struct {
 
 func LabelsFromProject(p *Project) map[string]string {
 	labels := map[string]string{
-		LabelManaged:   "true",
-		LabelProjectID: p.ID,
-		LabelName:      p.Name,
-		LabelGitRepo:   p.Git.Repo,
-		LabelGitBranch: p.Git.Branch,
-		LabelImage:     p.Image,
+		LabelManaged:       "true",
+		LabelProjectID:     p.ID,
+		LabelName:          p.Name,
+		LabelGitRepo:       p.Git.Repo,
+		LabelGitBranch:     p.Git.Branch,
+		LabelImage:         p.Image,
+		LabelContainerUser: p.ContainerUser,
 	}
 	if p.Git.Depth > 0 {
 		labels[LabelGitDepth] = strconv.Itoa(p.Git.Depth)
@@ -67,11 +70,12 @@ func LabelsFromProject(p *Project) map[string]string {
 
 func ProjectFromLabels(id string, labels map[string]string) *Project {
 	p := &Project{
-		ID:      id,
-		Name:    labels[LabelName],
-		Git:     Git{Repo: labels[LabelGitRepo], Branch: labels[LabelGitBranch]},
-		Image:   labels[LabelImage],
-		Volumes: ProjectVolumes(id),
+		ID:            id,
+		Name:          labels[LabelName],
+		Git:           Git{Repo: labels[LabelGitRepo], Branch: labels[LabelGitBranch]},
+		Image:         labels[LabelImage],
+		ContainerUser: labels[LabelContainerUser],
+		Volumes:       ProjectVolumes(id),
 	}
 	if d, err := strconv.Atoi(labels[LabelGitDepth]); err == nil {
 		p.Git.Depth = d

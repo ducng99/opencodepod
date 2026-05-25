@@ -19,6 +19,10 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	if image == "" {
 		image = dm.Cfg.DefaultImage
 	}
+	containerUser := req.ContainerUser
+	if containerUser == "" {
+		containerUser = dm.Cfg.ContainerUser
+	}
 
 	p := &project.Project{
 		ID:            id,
@@ -27,7 +31,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		Image:         image,
 		Volumes:       project.ProjectVolumes(id),
 		Status:        "creating",
-		ContainerUser: dm.Cfg.ContainerUser,
+		ContainerUser: containerUser,
 	}
 
 	for _, vol := range p.Volumes {
@@ -88,7 +92,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 
 	hostConfig := &container.HostConfig{
 		PortBindings: portBindings,
-		Binds:        dm.buildBinds(p.ID),
+		Binds:        dm.buildBinds(p.ID, p.ContainerUser),
 		ExtraHosts:   extraHosts,
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
@@ -107,7 +111,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if err := dm.injectSecrets(ctx, createResult.ID); err != nil {
+	if err := dm.injectSecrets(ctx, createResult.ID, p.ContainerUser); err != nil {
 		return nil, err
 	}
 

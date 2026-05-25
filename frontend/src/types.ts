@@ -20,6 +20,7 @@ export interface CreateRequest {
     name: string;
     git?: Git;
     image?: string;
+    container_user?: string;
 }
 
 export interface UpdateRequest {

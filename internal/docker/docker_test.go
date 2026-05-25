@@ -792,7 +792,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	}
 
 	// Now copy the GPG key.
-	if err := dm.copyGPGKey(ctx, createResult.ID); err != nil {
+	if err := dm.copyGPGKey(ctx, createResult.ID, cfgWithGPG.ContainerUser); err != nil {
 		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("copyGPGKey failed: %v", err)
 	}
@@ -945,7 +945,7 @@ func TestDockerManager_copyGPGPassphrase(t *testing.T) {
 		t.Fatalf("exec start failed: %v", err)
 	}
 
-	if err := dm.copyGPGPassphrase(ctx, createResult.ID); err != nil {
+	if err := dm.copyGPGPassphrase(ctx, createResult.ID, cfgWithGPG.ContainerUser); err != nil {
 		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
 		t.Fatalf("copyGPGPassphrase failed: %v", err)
 	}
