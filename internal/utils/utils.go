@@ -20,11 +20,11 @@ const TestImage = "nginx:alpine"
 
 func RequireDocker(t *testing.T) *docker.DockerManager {
 	t.Helper()
-	cfg := &config.Config{
+	config.Cfg = &config.Config{
 		ListenAddr:   ":8080",
 		DefaultImage: TestImage,
 	}
-	dm, err := docker.NewDockerManager(cfg)
+	dm, err := docker.NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}

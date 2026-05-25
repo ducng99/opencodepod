@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/netip"
 
+	"opencodepod/internal/config"
 	"opencodepod/internal/project"
 
 	"github.com/moby/moby/api/types/container"
@@ -17,11 +18,11 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	id := generateID(8)
 	image := req.Image
 	if image == "" {
-		image = dm.Cfg.DefaultImage
+		image = config.Cfg.DefaultImage
 	}
 	containerUser := req.ContainerUser
 	if containerUser == "" {
-		containerUser = dm.Cfg.ContainerUser
+		containerUser = config.Cfg.ContainerUser
 	}
 
 	p := &project.Project{
@@ -86,7 +87,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	}
 
 	extraHosts := []string{"host.docker.internal:host-gateway"}
-	for host, ip := range dm.Cfg.Hosts {
+	for host, ip := range config.Cfg.Hosts {
 		extraHosts = append(extraHosts, fmt.Sprintf("%s:%s", host, ip))
 	}
 

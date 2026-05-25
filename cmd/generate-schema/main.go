@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	schema := generateSchema(reflect.TypeOf(config.Config{}))
+	schema := generateSchema(reflect.TypeFor[config.Config]())
 	schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 	schema["title"] = "Config"
 	schema["description"] = "OpenCodePod server configuration schema."

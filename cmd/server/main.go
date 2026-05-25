@@ -16,18 +16,18 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig()
+	err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
-	dm, err := docker.NewDockerManager(cfg)
+	dm, err := docker.NewDockerManager()
 	if err != nil {
 		log.Fatalf("docker init: %v", err)
 	}
 	defer dm.Close()
 
-	server := handlers.NewServer(cfg, dm)
+	server := handlers.NewServer(dm)
 
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
@@ -40,7 +40,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(static)))
 
 	srv := &http.Server{
-		Addr:    cfg.ListenAddr,
+		Addr:    config.Cfg.ListenAddr,
 		Handler: cors(mux),
 	}
 
@@ -50,7 +50,7 @@ func main() {
 		}
 	}()
 
-	fmt.Printf("OpenCodePod listening on %s\n", cfg.ListenAddr)
+	fmt.Printf("OpenCodePod listening on %s\n", config.Cfg.ListenAddr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

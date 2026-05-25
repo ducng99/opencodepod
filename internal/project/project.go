@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"opencodepod/internal/config"
 )
 
 const (
-	LabelManaged   = "opencodepod.managed"
-	LabelProjectID = "opencodepod.project.id"
-	LabelName      = "opencodepod.project.name"
-	LabelGitRepo   = "opencodepod.project.git_repo"
-	LabelGitBranch = "opencodepod.project.git_branch"
-	LabelGitDepth  = "opencodepod.project.git_depth"
+	LabelManaged       = "opencodepod.managed"
+	LabelProjectID     = "opencodepod.project.id"
+	LabelName          = "opencodepod.project.name"
+	LabelGitRepo       = "opencodepod.project.git_repo"
+	LabelGitBranch     = "opencodepod.project.git_branch"
+	LabelGitDepth      = "opencodepod.project.git_depth"
 	LabelImage         = "opencodepod.project.image"
 	LabelContainerUser = "opencodepod.project.container_user"
 )
@@ -25,15 +27,15 @@ type Git struct {
 }
 
 type Project struct {
-	ID             string   `json:"id"`
-	Name           string   `json:"name"`
-	Git            Git      `json:"git"`
-	Status         string   `json:"status"`
-	SSHPort        int      `json:"ssh_port"`
-	WebPort        int      `json:"web_port"`
-	Volumes        []string `json:"volumes"`
-	Image          string   `json:"image"`
-	ContainerUser  string   `json:"container_user"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Git           Git      `json:"git"`
+	Status        string   `json:"status"`
+	SSHPort       int      `json:"ssh_port"`
+	WebPort       int      `json:"web_port"`
+	Volumes       []string `json:"volumes"`
+	Image         string   `json:"image"`
+	ContainerUser string   `json:"container_user"`
 }
 
 type VolumeMount struct {
@@ -69,12 +71,22 @@ func LabelsFromProject(p *Project) map[string]string {
 }
 
 func ProjectFromLabels(id string, labels map[string]string) *Project {
+	image, ok := labels[LabelImage]
+	if !ok {
+		image = config.Cfg.DefaultImage
+	}
+
+	containerUser, ok := labels[LabelContainerUser]
+	if !ok {
+		containerUser = config.Cfg.ContainerUser
+	}
+
 	p := &Project{
 		ID:            id,
 		Name:          labels[LabelName],
 		Git:           Git{Repo: labels[LabelGitRepo], Branch: labels[LabelGitBranch]},
-		Image:         labels[LabelImage],
-		ContainerUser: labels[LabelContainerUser],
+		Image:         image,
+		ContainerUser: containerUser,
 		Volumes:       ProjectVolumes(id),
 	}
 	if d, err := strconv.Atoi(labels[LabelGitDepth]); err == nil {

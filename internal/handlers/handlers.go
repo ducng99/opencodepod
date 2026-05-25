@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"opencodepod/internal/config"
 	"opencodepod/internal/docker"
 )
 
 type Server struct {
-	cfg    *config.Config
 	docker *docker.DockerManager
 }
 
-func NewServer(cfg *config.Config, docker *docker.DockerManager) *Server {
-	return &Server{cfg: cfg, docker: docker}
+func NewServer(docker *docker.DockerManager) *Server {
+	return &Server{docker: docker}
 }
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {

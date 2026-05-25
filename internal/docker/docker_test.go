@@ -24,11 +24,12 @@ const TestImage = "nginx:alpine"
 
 func RequireDocker(t *testing.T) *DockerManager {
 	t.Helper()
-	cfg := &config.Config{
+	config.Cfg = &config.Config{
 		ListenAddr:   ":8080",
 		DefaultImage: TestImage,
 	}
-	dm, err := NewDockerManager(cfg)
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -290,12 +291,13 @@ func TestDockerManager_CreateProject_WithSSHKey(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	cfgWithSSH := &config.Config{
+	config.Cfg = &config.Config{
 		ListenAddr:   ":8080",
 		DefaultImage: TestImage,
 		SSHPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test",
 	}
-	dm, err := NewDockerManager(cfgWithSSH)
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -351,7 +353,9 @@ func TestDockerManager_CreateProject_WithGitSSHKey(t *testing.T) {
 			},
 		},
 	}
-	dm, err := NewDockerManager(cfgWithKey)
+	config.Cfg = cfgWithKey
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -418,7 +422,9 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 			},
 		},
 	}
-	dm, err := NewDockerManager(cfgWithCreds)
+	config.Cfg = cfgWithCreds
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -557,7 +563,9 @@ func TestDockerManager_CreateProject_WithHosts(t *testing.T) {
 			"db.local":    "10.0.0.5",
 		},
 	}
-	dm, err := NewDockerManager(cfgWithHosts)
+	config.Cfg = cfgWithHosts
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -620,7 +628,9 @@ func TestDockerManager_CreateProject_WithGitUserEnv(t *testing.T) {
 			},
 		},
 	}
-	dm, err := NewDockerManager(cfgWithGitUser)
+	config.Cfg = cfgWithGitUser
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -682,7 +692,9 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 			},
 		},
 	}
-	dm, err := NewDockerManager(cfgWithGPG)
+	config.Cfg = cfgWithGPG
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
@@ -840,7 +852,9 @@ func TestDockerManager_copyGPGPassphrase(t *testing.T) {
 			},
 		},
 	}
-	dm, err := NewDockerManager(cfgWithGPG)
+	config.Cfg = cfgWithGPG
+
+	dm, err := NewDockerManager()
 	if err != nil {
 		t.Fatalf("docker client unavailable: %v", err)
 	}
