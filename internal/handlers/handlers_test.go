@@ -18,11 +18,11 @@ import (
 func setupTestServer(t *testing.T) (*Server, *docker.DockerManager) {
 	t.Helper()
 	dm := utils.RequireDocker(t)
-	config.Cfg = &config.Config{
+	cfg := &config.Config{
 		ListenAddr:   ":8080",
 		DefaultImage: utils.TestImage,
 	}
-	server := NewServer(dm)
+	server := NewServer(cfg, dm)
 	return server, dm
 }
 

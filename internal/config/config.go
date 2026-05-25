@@ -57,19 +57,10 @@ func (c *Config) HomeDir() string {
 
 const defaultConfigPath = "config.json"
 
-var (
-	Cfg               *Config
-	filePlaceholderRe = regexp.MustCompile(`^\{file:(.+)\}$`)
-)
+var filePlaceholderRe = regexp.MustCompile(`^\{file:(.+)\}$`)
 
-func LoadConfig() error {
-	config, err := loadConfigFrom(defaultConfigPath)
-	if err != nil {
-		return err
-	}
-
-	Cfg = config
-	return nil
+func LoadConfig() (*Config, error) {
+	return loadConfigFrom(defaultConfigPath)
 }
 
 func loadConfigFrom(path string) (*Config, error) {

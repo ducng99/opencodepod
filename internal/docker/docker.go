@@ -23,14 +23,15 @@ import (
 
 type DockerManager struct {
 	Client *dockerclient.Client
+	Cfg    *config.Config
 }
 
-func NewDockerManager() (*DockerManager, error) {
+func NewDockerManager(cfg *config.Config) (*DockerManager, error) {
 	cli, err := dockerclient.New(dockerclient.FromEnv)
 	if err != nil {
 		return nil, err
 	}
-	return &DockerManager{Client: cli}, nil
+	return &DockerManager{Client: cli, Cfg: cfg}, nil
 }
 
 func (dm *DockerManager) Close() error {
@@ -155,25 +156,25 @@ func (dm *DockerManager) stopAndRemoveContainer(ctx context.Context, containerID
 }
 
 func (dm *DockerManager) injectSecrets(ctx context.Context, containerID, containerUser string) error {
-	if config.Cfg.Git.Auth.SSHKey != "" {
+	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, containerID); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy git ssh key: %w", err)
 		}
 	}
-	if config.Cfg.Git.GPG.PrivateKey != "" {
+	if dm.Cfg.Git.GPG.PrivateKey != "" {
 		if err := dm.copyGPGKey(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy gpg key: %w", err)
 		}
 	}
-	if config.Cfg.Git.GPG.Passphrase != "" {
+	if dm.Cfg.Git.GPG.Passphrase != "" {
 		if err := dm.copyGPGPassphrase(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy gpg passphrase: %w", err)
 		}
 	}
-	if len(config.Cfg.Git.Auth.Credentials) > 0 {
+	if len(dm.Cfg.Git.Auth.Credentials) > 0 {
 		if err := dm.copyGitCredentials(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy git credentials: %w", err)
@@ -215,7 +216,7 @@ func writeTarToContainer(ctx context.Context, client *dockerclient.Client, conta
 }
 
 func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, filepath.Dir(config.Cfg.Git.Auth.SSHKeyPath), filepath.Base(config.Cfg.Git.Auth.SSHKeyPath), []byte(config.Cfg.Git.Auth.SSHKey))
+	return writeTarToContainer(ctx, dm.Client, containerID, filepath.Dir(dm.Cfg.Git.Auth.SSHKeyPath), filepath.Base(dm.Cfg.Git.Auth.SSHKeyPath), []byte(dm.Cfg.Git.Auth.SSHKey))
 }
 
 func (dm *DockerManager) homeDir(containerUser string) string {
@@ -223,16 +224,16 @@ func (dm *DockerManager) homeDir(containerUser string) string {
 }
 
 func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID, containerUser string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/private.key", []byte(config.Cfg.Git.GPG.PrivateKey))
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
 }
 
 func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID, containerUser string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/gpg_passphrase.key", []byte(config.Cfg.Git.GPG.Passphrase))
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
 }
 
 func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID, containerUser string) error {
 	var content bytes.Buffer
-	for host, cred := range config.Cfg.Git.Auth.Credentials {
+	for host, cred := range dm.Cfg.Git.Auth.Credentials {
 		username := url.QueryEscape(cred.Username)
 		password := url.QueryEscape(cred.Password)
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
@@ -245,19 +246,19 @@ func (dm *DockerManager) buildEnv(p *project.Project) []string {
 	env = appendEnv(env, "GIT_REPO", p.Git.Repo)
 	env = appendEnv(env, "GIT_BRANCH", p.Git.Branch)
 	env = appendEnvInt(env, "GIT_DEPTH", p.Git.Depth)
-	env = appendEnv(env, "SSH_PUBLIC_KEY", config.Cfg.SSHPublicKey)
-	env = appendEnv(env, "GIT_USER_NAME", config.Cfg.Git.UserName)
-	env = appendEnv(env, "GIT_USER_EMAIL", config.Cfg.Git.UserEmail)
-	env = appendEnv(env, "GIT_GPG_KEY_ID", config.Cfg.Git.GPG.KeyID)
+	env = appendEnv(env, "SSH_PUBLIC_KEY", dm.Cfg.SSHPublicKey)
+	env = appendEnv(env, "GIT_USER_NAME", dm.Cfg.Git.UserName)
+	env = appendEnv(env, "GIT_USER_EMAIL", dm.Cfg.Git.UserEmail)
+	env = appendEnv(env, "GIT_GPG_KEY_ID", dm.Cfg.Git.GPG.KeyID)
 	return env
 }
 
 func (dm *DockerManager) buildBinds(id, containerUser string) []string {
-	binds := make([]string, 0, len(project.ProjectVolumeMounts(id, containerUser))+len(config.Cfg.Mounts))
+	binds := make([]string, 0, len(project.ProjectVolumeMounts(id, containerUser))+len(dm.Cfg.Mounts))
 	for _, mount := range project.ProjectVolumeMounts(id, containerUser) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
-	for _, m := range config.Cfg.Mounts {
+	for _, m := range dm.Cfg.Mounts {
 		if m.Source == "" || m.Target == "" {
 			continue
 		}
