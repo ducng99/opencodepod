@@ -81,7 +81,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                 </label>
                 <input
                     type="text"
-                    placeholder="user/repo (optional)"
+                    placeholder="https://github.com/user/repo.git (optional)"
                     value={gitRepo}
                     onChange={e => setGitRepo(e.target.value)}
                     className="form-input"
