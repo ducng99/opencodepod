@@ -1,4 +1,0 @@
-{
-  "$schema": "https://raw.githubusercontent.com/ducng99/opencodepod/refs/heads/main/config.schema.json",
-  "default_image": "ghcr.io/ducng99/opencodepod-client:main"
-}
