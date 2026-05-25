@@ -13,6 +13,7 @@ export interface Project {
     web_port: number;
     volumes: string[];
     image: string;
+    container_user: string;
 }
 
 export interface CreateRequest {

@@ -25,8 +25,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.Git.Auth.SSHKey != "" {
 		t.Errorf("expected Git.Auth.SSHKey '', got '%s'", cfg.Git.Auth.SSHKey)
 	}
-	if cfg.Git.Auth.SSHKeyPath != "/home/coder/.ssh/id_ed25519" {
-		t.Errorf("expected Git.Auth.SSHKeyPath '/home/coder/.ssh/id_ed25519', got '%s'", cfg.Git.Auth.SSHKeyPath)
+	if cfg.Git.Auth.SSHKeyPath != "/home/ubuntu/.ssh/id_ed25519" {
+		t.Errorf("expected Git.Auth.SSHKeyPath '/home/ubuntu/.ssh/id_ed25519', got '%s'", cfg.Git.Auth.SSHKeyPath)
 	}
 	if cfg.Git.Auth.Credentials != nil {
 		t.Errorf("expected Git.Auth.Credentials nil, got %v", cfg.Git.Auth.Credentials)

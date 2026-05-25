@@ -74,6 +74,7 @@ func (dm *DockerManager) containerToProject(c *container.Summary) *project.Proje
 		healthStatus = string(c.Health.Status)
 	}
 	p.Status = computeStatus(string(c.State), healthStatus)
+	p.ContainerUser = dm.Cfg.ContainerUser
 
 	// Parse ports from container summary (fast path)
 	for _, port := range c.Ports {
@@ -220,11 +221,11 @@ func (dm *DockerManager) copyGitSSHKey(ctx context.Context, containerID string) 
 }
 
 func (dm *DockerManager) copyGPGKey(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".gnupg/private.key", []byte(dm.Cfg.Git.GPG.PrivateKey))
 }
 
 func (dm *DockerManager) copyGPGPassphrase(ctx context.Context, containerID string) error {
-	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".gnupg/gpg_passphrase.key", []byte(dm.Cfg.Git.GPG.Passphrase))
 }
 
 func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID string) error {
@@ -234,7 +235,7 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID str
 		password := url.QueryEscape(cred.Password)
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
 	}
-	return writeTarToContainer(ctx, dm.Client, containerID, "/home/coder", ".git-credentials", content.Bytes())
+	return writeTarToContainer(ctx, dm.Client, containerID, dm.Cfg.HomeDir(), ".git-credentials", content.Bytes())
 }
 
 func (dm *DockerManager) buildEnv(p *project.Project) []string {
@@ -250,8 +251,8 @@ func (dm *DockerManager) buildEnv(p *project.Project) []string {
 }
 
 func (dm *DockerManager) buildBinds(id string) []string {
-	binds := make([]string, 0, len(project.ProjectVolumeMounts(id))+len(dm.Cfg.Mounts))
-	for _, mount := range project.ProjectVolumeMounts(id) {
+	binds := make([]string, 0, len(project.ProjectVolumeMounts(id, dm.Cfg.ContainerUser))+len(dm.Cfg.Mounts))
+	for _, mount := range project.ProjectVolumeMounts(id, dm.Cfg.ContainerUser) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	for _, m := range dm.Cfg.Mounts {

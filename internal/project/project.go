@@ -24,14 +24,15 @@ type Git struct {
 }
 
 type Project struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Git     Git      `json:"git"`
-	Status  string   `json:"status"`
-	SSHPort int      `json:"ssh_port"`
-	WebPort int      `json:"web_port"`
-	Volumes []string `json:"volumes"`
-	Image   string   `json:"image"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Git            Git      `json:"git"`
+	Status         string   `json:"status"`
+	SSHPort        int      `json:"ssh_port"`
+	WebPort        int      `json:"web_port"`
+	Volumes        []string `json:"volumes"`
+	Image          string   `json:"image"`
+	ContainerUser  string   `json:"container_user"`
 }
 
 type VolumeMount struct {
@@ -78,20 +79,18 @@ func ProjectFromLabels(id string, labels map[string]string) *Project {
 	return p
 }
 
-func ProjectVolumeMounts(id string) []VolumeMount {
+func ProjectVolumeMounts(id string, containerUser string) []VolumeMount {
 	return []VolumeMount{
 		{Name: WorkspacesVolumeName(id), Target: "/workspaces"},
-		{Name: OpencodeSessionsVolumeName(id), Target: "/home/coder/.local/share/opencode"},
+		{Name: OpencodeSessionsVolumeName(id), Target: "/home/" + containerUser + "/.local/share/opencode"},
 	}
 }
 
 func ProjectVolumes(id string) []string {
-	mounts := ProjectVolumeMounts(id)
-	names := make([]string, len(mounts))
-	for i, m := range mounts {
-		names[i] = m.Name
+	return []string{
+		WorkspacesVolumeName(id),
+		OpencodeSessionsVolumeName(id),
 	}
-	return names
 }
 
 func WorkspacesVolumeName(id string) string {

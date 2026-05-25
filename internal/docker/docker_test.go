@@ -443,7 +443,7 @@ func TestDockerManager_CreateProject_WithGitCredentials(t *testing.T) {
 	execCreateResult, err := dm.Client.ExecCreate(ctx, project.ContainerName(p.ID), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
-		Cmd:          []string{"cat", "/home/coder/.git-credentials"},
+		Cmd:          []string{"cat", cfgWithCreds.HomeDir() + "/.git-credentials"},
 	})
 	if err != nil {
 		t.Fatalf("container exec create failed: %v", err)
@@ -741,7 +741,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	env := []string{"GIT_GPG_KEY_ID=TESTKEY123"}
 
 	binds := make([]string, 0, len(p.Volumes))
-	for _, mount := range project.ProjectVolumeMounts(p.ID) {
+	for _, mount := range project.ProjectVolumeMounts(p.ID, cfgWithGPG.ContainerUser) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	extraHosts := []string{"host.docker.internal:host-gateway"}
@@ -780,7 +780,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 
 	// Create the .gnupg directory before copying the key.
 	execCreateResult, err := dm.Client.ExecCreate(ctx, createResult.ID, dockerclient.ExecCreateOptions{
-		Cmd: []string{"mkdir", "-p", "/home/coder/.gnupg"},
+		Cmd: []string{"mkdir", "-p", cfgWithGPG.HomeDir() + "/.gnupg"},
 	})
 	if err != nil {
 		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
@@ -803,7 +803,7 @@ func TestDockerManager_CreateProject_WithGPGKey(t *testing.T) {
 	execCreateResult, err = dm.Client.ExecCreate(ctx, project.ContainerName(id), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
-		Cmd:          []string{"cat", "/home/coder/.gnupg/private.key"},
+		Cmd:          []string{"cat", cfgWithGPG.HomeDir() + "/.gnupg/private.key"},
 	})
 	if err != nil {
 		t.Fatalf("container exec create failed: %v", err)
@@ -896,7 +896,7 @@ func TestDockerManager_copyGPGPassphrase(t *testing.T) {
 		network.MustParsePort("8080/tcp"): struct{}{},
 	}
 	binds := make([]string, 0, len(p.Volumes))
-	for _, mount := range project.ProjectVolumeMounts(p.ID) {
+	for _, mount := range project.ProjectVolumeMounts(p.ID, cfgWithGPG.ContainerUser) {
 		binds = append(binds, fmt.Sprintf("%s:%s", mount.Name, mount.Target))
 	}
 	extraHosts := []string{"host.docker.internal:host-gateway"}
@@ -934,7 +934,7 @@ func TestDockerManager_copyGPGPassphrase(t *testing.T) {
 
 	// Create the .gnupg directory before copying the passphrase.
 	execCreateResult, err := dm.Client.ExecCreate(ctx, createResult.ID, dockerclient.ExecCreateOptions{
-		Cmd: []string{"mkdir", "-p", "/home/coder/.gnupg"},
+		Cmd: []string{"mkdir", "-p", cfgWithGPG.HomeDir() + "/.gnupg"},
 	})
 	if err != nil {
 		_, _ = dm.Client.ContainerRemove(ctx, createResult.ID, dockerclient.ContainerRemoveOptions{Force: true})
@@ -956,7 +956,7 @@ func TestDockerManager_copyGPGPassphrase(t *testing.T) {
 	execCreateResult, err = dm.Client.ExecCreate(ctx, project.ContainerName(id), dockerclient.ExecCreateOptions{
 		AttachStdout: true,
 		TTY:          true,
-		Cmd:          []string{"cat", "/home/coder/.gnupg/gpg_passphrase.key"},
+		Cmd:          []string{"cat", cfgWithGPG.HomeDir() + "/.gnupg/gpg_passphrase.key"},
 	})
 	if err != nil {
 		t.Fatalf("container exec create failed: %v", err)

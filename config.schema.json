@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "OpenCodePod server configuration schema.",
   "properties": {
+    "container_user": {
+      "description": "Username inside the container (e.g., ubuntu, coder).",
+      "type": "string"
+    },
     "default_image": {
       "description": "Default Docker image used for new project containers.",
       "type": "string"
@@ -102,7 +106,7 @@
       "type": "array"
     },
     "ssh_public_key": {
-      "description": "Public SSH key injected into containers for coder access.",
+      "description": "Public SSH key injected into containers for user access.",
       "type": "string"
     }
   },

@@ -21,12 +21,13 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 	}
 
 	p := &project.Project{
-		ID:      id,
-		Name:    req.Name,
-		Git:     project.Git{Repo: req.Git.Repo, Branch: req.Git.Branch, Depth: req.Git.Depth},
-		Image:   image,
-		Volumes: project.ProjectVolumes(id),
-		Status:  "creating",
+		ID:            id,
+		Name:          req.Name,
+		Git:           project.Git{Repo: req.Git.Repo, Branch: req.Git.Branch, Depth: req.Git.Depth},
+		Image:         image,
+		Volumes:       project.ProjectVolumes(id),
+		Status:        "creating",
+		ContainerUser: dm.Cfg.ContainerUser,
 	}
 
 	for _, vol := range p.Volumes {

@@ -42,12 +42,17 @@ type GitConfig struct {
 }
 
 type Config struct {
-	ListenAddr   string            `json:"listen_addr" desc:"Address and port for the HTTP server to listen on (e.g., :8080)."`
-	DefaultImage string            `json:"default_image" desc:"Default Docker image used for new project containers."`
-	SSHPublicKey string            `json:"ssh_public_key" desc:"Public SSH key injected into containers for coder access."`
-	Mounts       []Mount           `json:"mounts" desc:"Additional host paths to mount into containers."`
-	Hosts        map[string]string `json:"hosts" desc:"Custom host entries added to container /etc/hosts."`
-	Git          GitConfig         `json:"git" desc:"Git configuration including auth, user identity, and GPG signing."`
+	ListenAddr    string            `json:"listen_addr" desc:"Address and port for the HTTP server to listen on (e.g., :8080)."`
+	DefaultImage  string            `json:"default_image" desc:"Default Docker image used for new project containers."`
+	ContainerUser string            `json:"container_user" desc:"Username inside the container (e.g., ubuntu, coder)."`
+	SSHPublicKey  string            `json:"ssh_public_key" desc:"Public SSH key injected into containers for user access."`
+	Mounts        []Mount           `json:"mounts" desc:"Additional host paths to mount into containers."`
+	Hosts         map[string]string `json:"hosts" desc:"Custom host entries added to container /etc/hosts."`
+	Git           GitConfig         `json:"git" desc:"Git configuration including auth, user identity, and GPG signing."`
+}
+
+func (c *Config) HomeDir() string {
+	return "/home/" + c.ContainerUser
 }
 
 const defaultConfigPath = "config.json"
@@ -60,13 +65,14 @@ func LoadConfig() (*Config, error) {
 
 func loadConfigFrom(path string) (*Config, error) {
 	cfg := &Config{
-		ListenAddr:   "127.0.0.1:8080",
-		DefaultImage: "ghcr.io/ducng99/opencodepod-client:latest",
-		SSHPublicKey: "",
-		Mounts:       []Mount{},
+		ListenAddr:    "127.0.0.1:8080",
+		DefaultImage:  "ghcr.io/ducng99/opencodepod-client:latest",
+		ContainerUser: "ubuntu",
+		SSHPublicKey:  "",
+		Mounts:        []Mount{},
 		Git: GitConfig{
 			Auth: GitAuthConfig{
-				SSHKeyPath: "/home/coder/.ssh/id_ed25519",
+				SSHKeyPath: "/home/ubuntu/.ssh/id_ed25519",
 			},
 		},
 	}

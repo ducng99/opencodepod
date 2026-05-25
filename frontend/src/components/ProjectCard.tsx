@@ -43,7 +43,7 @@ export function ProjectCard({
     };
 
     const h = host();
-    const sshCmd = project.ssh_port ? `ssh -p ${project.ssh_port} coder@${h}` : "";
+    const sshCmd = project.ssh_port && project.container_user ? `ssh -p ${project.ssh_port} ${project.container_user}@${h}` : "";
     const webUrl = project.web_port ? `http://${h}:${project.web_port}` : "";
     const attachCmd = webUrl ? `opencode attach ${webUrl}` : "";
 

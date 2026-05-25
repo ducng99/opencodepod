@@ -31,7 +31,7 @@ RUN ssh-keygen -A \
     && sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config \
     && sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
     && sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config \
-    && echo "AllowUsers coder" >> /etc/ssh/sshd_config
+    && echo "AllowUsers ubuntu" >> /etc/ssh/sshd_config
 
 # Install gh CLI
 RUN mkdir -p -m 755 /etc/apt/keyrings \
@@ -51,19 +51,17 @@ RUN GO_VERSION=$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -n 1 | sed 's
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm /tmp/go.tar.gz
 
-# Create user 'coder' with home directory and passwordless sudo
-RUN useradd -m -s /bin/zsh coder \
-    && usermod -aG sudo coder \
-    && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
-    && chmod 0440 /etc/sudoers.d/coder
+# Ensure ubuntu user has passwordless sudo
+RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
+    && chmod 0440 /etc/sudoers.d/ubuntu
 
-# Ensure workspace and .ssh dir exist and are owned by coder
+# Ensure workspace and .ssh dir exist and are owned by ubuntu
 RUN mkdir -p /workspaces \
-    && chown -R coder:coder /workspaces
+    && chown -R ubuntu:ubuntu /workspaces
 
-# Install opencode as user 'coder'
-USER coder
-ENV PATH="/home/coder/.opencode/bin:/home/coder/bin:/usr/local/go/bin:${PATH}"
+# Install opencode as user 'ubuntu'
+USER ubuntu
+ENV PATH="/home/ubuntu/.opencode/bin:/home/ubuntu/bin:/usr/local/go/bin:${PATH}"
 
 # Install Oh My Zsh and plugins
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
@@ -75,7 +73,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
     && echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
 RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://opencode.ai/install | bash
-COPY --chown=coder:coder opencode.jsonc /home/coder/.config/opencode/opencode.jsonc
+COPY --chown=ubuntu:ubuntu opencode.jsonc /home/ubuntu/.config/opencode/opencode.jsonc
 
 # Write SSH client config for GitHub / GitLab
 RUN mkdir -p ~/.ssh \
@@ -90,7 +88,7 @@ RUN mkdir -p ~/.ssh \
 # Initialise GPG home directory so GPG creates its internal structure
 RUN gpg --list-keys >/dev/null 2>&1 || true
 
-COPY --chown=coder:coder entrypoint.sh /home/coder/entrypoint.sh
+COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/entrypoint.sh
 
 WORKDIR /workspaces
 EXPOSE 8080
@@ -98,5 +96,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/global/health || exit 1
 
-ENTRYPOINT ["bash", "/home/coder/entrypoint.sh"]
+ENTRYPOINT ["bash", "/home/ubuntu/entrypoint.sh"]
 CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "8080", "--cors", "*"]
