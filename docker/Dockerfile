@@ -61,7 +61,7 @@ RUN mkdir -p /workspaces \
 
 # Install opencode as user 'ubuntu'
 USER ubuntu
-ENV PATH="/home/ubuntu/.opencode/bin:/home/ubuntu/bin:/usr/local/go/bin:${PATH}"
+ENV PATH="/home/ubuntu/.bun/bin:/home/ubuntu/.opencode/bin:/home/ubuntu/bin:/usr/local/go/bin:${PATH}"
 
 # Install Oh My Zsh and plugins
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
