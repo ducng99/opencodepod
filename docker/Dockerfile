@@ -88,6 +88,9 @@ RUN mkdir -p ~/.ssh \
 # Initialise GPG home directory so GPG creates its internal structure
 RUN gpg --list-keys >/dev/null 2>&1 || true
 
+# Create .gitignore in home directory
+RUN echo '**/.opencode/plans/' > ~/.gitignore
+
 COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/entrypoint.sh
 
 WORKDIR /workspaces
