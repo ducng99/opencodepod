@@ -14,6 +14,7 @@ export interface Project {
     volumes: string[];
     image: string;
     container_user: string;
+    stacks: string[];
 }
 
 export interface CreateRequest {
@@ -21,6 +22,7 @@ export interface CreateRequest {
     git?: Git;
     image?: string;
     container_user?: string;
+    stacks?: string[];
 }
 
 export interface UpdateRequest {

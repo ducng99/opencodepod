@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect, type SubmitEvent } from "react";
 import { LoadingButton } from "./LoadingButton";
 
+const AVAILABLE_STACKS = [
+    { id: "javascript", name: "JavaScript", description: "Node.js 24 LTS, npm, Bun" },
+    { id: "go", name: "Go", description: "Go 1.26, gopls, gofumpt, staticcheck" },
+    { id: "python", name: "Python", description: "Python 3.14, pip, venv, uv" },
+    { id: "rust", name: "Rust", description: "Rust 1.95, cargo, rust-analyzer" },
+    { id: "java", name: "Java", description: "OpenJDK 25 LTS, Maven 3.9, Gradle 9.5" },
+    { id: "ruby", name: "Ruby", description: "Ruby 4.0, bundler" },
+    { id: "php", name: "PHP", description: "PHP 8.5, Composer" },
+];
+
 interface Props {
     onSubmit: (
         name: string,
@@ -9,6 +19,7 @@ interface Props {
         branch: string,
         depth: number | undefined,
         containerUser: string,
+        stacks: string[],
     ) => Promise<void>;
     onCancel: () => void;
 }
@@ -20,6 +31,7 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
     const [branch, setBranch] = useState("");
     const [depth, setDepth] = useState("");
     const [containerUser, setContainerUser] = useState("");
+    const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -28,6 +40,12 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         const id = setTimeout(() => nameRef.current?.focus(), 50);
         return () => clearTimeout(id);
     }, []);
+
+    const toggleStack = (id: string) => {
+        setSelectedStacks(prev =>
+            prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id],
+        );
+    };
 
     const handleSubmit = async (e: SubmitEvent) => {
         e.preventDefault();
@@ -43,13 +61,14 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
         }
         setLoading(true);
         try {
-            await onSubmit(trimmed, gitRepo.trim(), image.trim(), branch.trim(), depthNum, containerUser.trim());
+            await onSubmit(trimmed, gitRepo.trim(), image.trim(), branch.trim(), depthNum, containerUser.trim(), selectedStacks);
             setName("");
             setGitRepo("");
             setImage("");
             setBranch("");
             setDepth("");
             setContainerUser("");
+            setSelectedStacks([]);
             setAdvancedOpen(false);
         }
         catch (err) {
@@ -173,6 +192,44 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                     onChange={e => setContainerUser(e.target.value)}
                     className="form-input"
                 />
+            </div>
+
+            <div>
+                <label className="form-label">Software Stacks</label>
+                <p className="text-xs text-oc-text-muted mb-3">
+                    Select tools to install on first launch. Stored in /opt/ volume.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                    {AVAILABLE_STACKS.map(stack => (
+                        <button
+                            key={stack.id}
+                            type="button"
+                            onClick={() => toggleStack(stack.id)}
+                            className={`p-3 rounded-xl border text-left transition-all ${
+                                selectedStacks.includes(stack.id)
+                                    ? "border-oc-accent bg-oc-accent/10"
+                                    : "border-oc-border hover:border-oc-border-strong"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                    selectedStacks.includes(stack.id)
+                                        ? "border-oc-accent bg-oc-accent"
+                                        : "border-oc-border"
+                                }`}
+                                >
+                                    {selectedStacks.includes(stack.id) && (
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <span className="font-medium text-oc-text text-sm">{stack.name}</span>
+                            </div>
+                            <p className="text-xs text-oc-text-muted mt-1 ml-6">{stack.description}</p>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-3">

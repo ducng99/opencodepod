@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -155,7 +156,7 @@ func (dm *DockerManager) stopAndRemoveContainer(ctx context.Context, containerID
 	return nil
 }
 
-func (dm *DockerManager) injectSecrets(ctx context.Context, containerID, containerUser string) error {
+func (dm *DockerManager) injectSecrets(ctx context.Context, containerID, containerUser string, stacks []string) error {
 	if dm.Cfg.Git.Auth.SSHKey != "" {
 		if err := dm.copyGitSSHKey(ctx, containerID); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
@@ -178,6 +179,12 @@ func (dm *DockerManager) injectSecrets(ctx context.Context, containerID, contain
 		if err := dm.copyGitCredentials(ctx, containerID, containerUser); err != nil {
 			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
 			return fmt.Errorf("copy git credentials: %w", err)
+		}
+	}
+	if len(stacks) > 0 {
+		if err := dm.copyStacksConfig(ctx, containerID, stacks); err != nil {
+			_, _ = dm.Client.ContainerRemove(ctx, containerID, dockerclient.ContainerRemoveOptions{Force: true})
+			return fmt.Errorf("copy stacks config: %w", err)
 		}
 	}
 	return nil
@@ -239,6 +246,18 @@ func (dm *DockerManager) copyGitCredentials(ctx context.Context, containerID, co
 		content.WriteString(fmt.Sprintf("https://%s:%s@%s\n", username, password, host))
 	}
 	return writeTarToContainer(ctx, dm.Client, containerID, dm.homeDir(containerUser), ".git-credentials", content.Bytes())
+}
+
+func (dm *DockerManager) copyStacksConfig(ctx context.Context, containerID string, stacks []string) error {
+	if len(stacks) == 0 {
+		return nil
+	}
+	config := map[string]interface{}{"stacks": stacks}
+	data, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("marshal stacks config: %w", err)
+	}
+	return writeTarToContainer(ctx, dm.Client, containerID, "/opt", ".stacks.json", data)
 }
 
 func (dm *DockerManager) buildEnv(p *project.Project) []string {

@@ -101,6 +101,9 @@ if [ -x /usr/sbin/sshd ]; then
   echo "sshd started."
 fi
 
+# Software Stack Installation
+/home/ubuntu/.opencodepod/softwares/install.sh
+
 cd "$WORKSPACE"
 
 if [ -n "$GIT_REPO" ]; then

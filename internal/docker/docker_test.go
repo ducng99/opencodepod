@@ -136,14 +136,17 @@ func TestDockerManager_CreateProject(t *testing.T) {
 	if p.Name != "test-create" {
 		t.Errorf("expected name test-create, got %s", p.Name)
 	}
-	if len(p.Volumes) != 2 {
-		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
+	if len(p.Volumes) != 3 {
+		t.Errorf("expected 3 volumes, got %d", len(p.Volumes))
 	}
 	if p.Volumes[0] != project.WorkspacesVolumeName(p.ID) {
 		t.Errorf("expected volume %s, got %s", project.WorkspacesVolumeName(p.ID), p.Volumes[0])
 	}
 	if p.Volumes[1] != project.OpencodeSessionsVolumeName(p.ID) {
 		t.Errorf("expected home volume %s, got %s", project.OpencodeSessionsVolumeName(p.ID), p.Volumes[1])
+	}
+	if p.Volumes[2] != project.OptVolumeName(p.ID) {
+		t.Errorf("expected opt volume %s, got %s", project.OptVolumeName(p.ID), p.Volumes[2])
 	}
 	if p.Status == "" {
 		t.Error("expected non-empty status")
@@ -1015,8 +1018,8 @@ func TestDockerManager_UpgradeProject(t *testing.T) {
 	if upgraded.WebPort == 0 {
 		t.Error("expected web port after upgrade")
 	}
-	if len(upgraded.Volumes) != 2 {
-		t.Errorf("expected 2 volumes after upgrade, got %d", len(upgraded.Volumes))
+	if len(upgraded.Volumes) != 3 {
+		t.Errorf("expected 3 volumes after upgrade, got %d", len(upgraded.Volumes))
 	}
 
 	// Ports may change on recreate, but should still be non-zero
@@ -1088,4 +1091,99 @@ func TestDockerManager_UpgradeProject_NotFound(t *testing.T) {
 	if !strings.Contains(err.Error(), "not found") {
 		t.Errorf("expected 'not found' in error, got: %v", err)
 	}
+}
+
+func TestDockerManager_CreateProject_WithStacks(t *testing.T) {
+	t.Parallel()
+	dm := RequireDocker(t)
+	ctx := context.Background()
+
+	req := &project.CreateRequest{
+		Name:   "test-stacks",
+		Stacks: []string{"javascript", "go"},
+	}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer CleanupTestProject(t, dm, p.ID)
+
+	if len(p.Stacks) != 2 {
+		t.Errorf("expected 2 stacks, got %d", len(p.Stacks))
+	}
+
+	// Verify .stacks.json was written to the container
+	execResult, err := dm.Client.ExecCreate(ctx, project.ContainerName(p.ID), dockerclient.ExecCreateOptions{
+		AttachStdout: true,
+		TTY:          true,
+		Cmd:          []string{"cat", "/opt/.stacks.json"},
+	})
+	if err != nil {
+		t.Fatalf("exec create failed: %v", err)
+	}
+
+	attachResult, err := dm.Client.ExecAttach(ctx, execResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	if err != nil {
+		t.Fatalf("exec attach failed: %v", err)
+	}
+	defer attachResult.Close()
+
+	data, err := io.ReadAll(attachResult.Reader)
+	if err != nil {
+		t.Fatalf("read exec output failed: %v", err)
+	}
+
+	got := strings.TrimSpace(string(data))
+	if !strings.Contains(got, "javascript") || !strings.Contains(got, "go") {
+		t.Errorf("expected .stacks.json to contain javascript and go, got: %s", got)
+	}
+
+	// Verify label
+	f := dockerclient.Filters{}.Add("label", fmt.Sprintf("%s=%s", project.LabelProjectID, p.ID))
+	result, err := dm.Client.ContainerList(ctx, dockerclient.ContainerListOptions{All: true, Filters: f})
+	if err != nil {
+		t.Fatalf("container list failed: %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(result.Items))
+	}
+	if result.Items[0].Labels[project.LabelStacks] != "javascript,go" {
+		t.Errorf("expected stacks label 'javascript,go', got %s", result.Items[0].Labels[project.LabelStacks])
+	}
+}
+
+func TestDockerManager_CreateProject_WithoutStacks(t *testing.T) {
+	t.Parallel()
+	dm := RequireDocker(t)
+	ctx := context.Background()
+
+	req := &project.CreateRequest{Name: "test-no-stacks"}
+	p, err := dm.CreateProject(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateProject failed: %v", err)
+	}
+	defer CleanupTestProject(t, dm, p.ID)
+
+	if len(p.Stacks) != 0 {
+		t.Errorf("expected 0 stacks, got %d", len(p.Stacks))
+	}
+
+	// Verify .stacks.json was NOT written
+	execResult, err := dm.Client.ExecCreate(ctx, project.ContainerName(p.ID), dockerclient.ExecCreateOptions{
+		AttachStdout: true,
+		TTY:          true,
+		Cmd:          []string{"test", "-f", "/opt/.stacks.json"},
+	})
+	if err != nil {
+		t.Fatalf("exec create failed: %v", err)
+	}
+
+	attachResult, err := dm.Client.ExecAttach(ctx, execResult.ID, dockerclient.ExecAttachOptions{TTY: true})
+	if err != nil {
+		t.Fatalf("exec attach failed: %v", err)
+	}
+	defer attachResult.Close()
+
+	// The test command should exit with status 1 (file doesn't exist)
+	_, _ = io.ReadAll(attachResult.Reader)
 }
