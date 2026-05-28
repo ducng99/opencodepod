@@ -31,7 +31,7 @@ export function Modal({ isOpen, onClose, title, children }: Props) {
             />
             <div
                 ref={contentRef}
-                className="relative z-10 w-full max-w-md bg-oc-surface border border-oc-border-strong rounded-2xl shadow-2xl p-6 mx-4 modal-animate"
+                className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto bg-oc-surface border border-oc-border-strong rounded-2xl shadow-2xl p-6 mx-4 modal-animate"
                 style={{
                     boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.05)",
                 }}
