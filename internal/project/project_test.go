@@ -28,6 +28,22 @@ func TestLabelsFromProject(t *testing.T) {
 	if labels[LabelImage] != "custom-opencode:latest" {
 		t.Errorf("expected project.image, got %s", labels[LabelImage])
 	}
+	if _, ok := labels[LabelStacks]; ok {
+		t.Errorf("expected no stacks label for empty stacks, got %s", labels[LabelStacks])
+	}
+}
+
+func TestLabelsFromProject_WithStacks(t *testing.T) {
+	t.Parallel()
+	p := &Project{
+		ID:     "abc123",
+		Name:   "myproject",
+		Stacks: []string{"javascript", "go"},
+	}
+	labels := LabelsFromProject(p)
+	if labels[LabelStacks] != "javascript,go" {
+		t.Errorf("expected stacks label 'javascript,go', got %s", labels[LabelStacks])
+	}
 }
 
 func TestProjectFromLabels(t *testing.T) {
@@ -51,14 +67,17 @@ func TestProjectFromLabels(t *testing.T) {
 	if p.Image != "img:v2" {
 		t.Errorf("expected image img:v2, got %s", p.Image)
 	}
-	if len(p.Volumes) != 2 {
-		t.Errorf("expected 2 volumes, got %d", len(p.Volumes))
+	if len(p.Volumes) != 3 {
+		t.Errorf("expected 3 volumes, got %d", len(p.Volumes))
 	}
 	if p.Volumes[0] != WorkspacesVolumeName("xyz789") {
 		t.Errorf("expected workspaces volume %s, got %s", WorkspacesVolumeName("xyz789"), p.Volumes[0])
 	}
 	if p.Volumes[1] != OpencodeSessionsVolumeName("xyz789") {
 		t.Errorf("expected opencode sessions volume %s, got %s", OpencodeSessionsVolumeName("xyz789"), p.Volumes[1])
+	}
+	if p.Volumes[2] != OptVolumeName("xyz789") {
+		t.Errorf("expected opt volume %s, got %s", OptVolumeName("xyz789"), p.Volumes[2])
 	}
 }
 
@@ -73,6 +92,34 @@ func TestOpencodeSessionsVolumeName(t *testing.T) {
 	t.Parallel()
 	if OpencodeSessionsVolumeName("abc") != "cp-vol-abc-opencode" {
 		t.Errorf("expected cp-vol-abc-opencode, got %s", OpencodeSessionsVolumeName("abc"))
+	}
+}
+
+func TestOptVolumeName(t *testing.T) {
+	t.Parallel()
+	if OptVolumeName("abc") != "cp-vol-abc-opt" {
+		t.Errorf("expected cp-vol-abc-opt, got %s", OptVolumeName("abc"))
+	}
+}
+
+func TestStacksFromLabel(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty", "", 0},
+		{"single", "javascript", 1},
+		{"multiple", "javascript,go,python", 3},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := StacksFromLabel(c.input)
+			if len(got) != c.want {
+				t.Errorf("StacksFromLabel(%q) returned %d items, want %d", c.input, len(got), c.want)
+			}
+		})
 	}
 }
 

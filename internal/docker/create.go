@@ -32,6 +32,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		Volumes:       project.ProjectVolumes(id),
 		Status:        "creating",
 		ContainerUser: containerUser,
+		Stacks:        req.Stacks,
 	}
 
 	for _, vol := range p.Volumes {
@@ -111,7 +112,7 @@ func (dm *DockerManager) CreateProject(ctx context.Context, req *project.CreateR
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if err := dm.injectSecrets(ctx, createResult.ID, p.ContainerUser); err != nil {
+	if err := dm.injectSecrets(ctx, createResult.ID, p.ContainerUser, p.Stacks); err != nil {
 		return nil, err
 	}
 

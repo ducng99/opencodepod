@@ -12,7 +12,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     htop \
     tree \
     sudo \
-    nodejs \
     vim \
     nano \
     ssh \
@@ -43,14 +42,6 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
 	&& apt-get update \
 	&& apt-get install gh -y
 
-# Install latest Go from official tarball
-RUN GO_VERSION=$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -n 1 | sed 's/^go//') \
-    && echo "Installing Go ${GO_VERSION}" \
-    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
-    && rm -rf /usr/local/go \
-    && tar -C /usr/local -xzf /tmp/go.tar.gz \
-    && rm /tmp/go.tar.gz
-
 # Ensure ubuntu user has passwordless sudo
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
     && chmod 0440 /etc/sudoers.d/ubuntu
@@ -61,7 +52,7 @@ RUN mkdir -p /workspaces \
 
 # Install opencode as user 'ubuntu'
 USER ubuntu
-ENV PATH="/home/ubuntu/.bun/bin:/home/ubuntu/.opencode/bin:/home/ubuntu/bin:/usr/local/go/bin:${PATH}"
+ENV PATH="/home/ubuntu/.bun/bin:/home/ubuntu/.opencode/bin:/home/ubuntu/bin:${PATH}"
 
 # Install Oh My Zsh and plugins
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
@@ -71,7 +62,6 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
     && echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
-RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=ubuntu:ubuntu opencode.jsonc /home/ubuntu/.config/opencode/opencode.jsonc
 

@@ -49,7 +49,7 @@ func (dm *DockerManager) RenameProject(ctx context.Context, id string, req *proj
 		return nil, fmt.Errorf("container create: %w", err)
 	}
 
-	if err := dm.injectSecrets(ctx, createResult.ID, labels[project.LabelContainerUser]); err != nil {
+	if err := dm.injectSecrets(ctx, createResult.ID, labels[project.LabelContainerUser], project.StacksFromLabel(labels[project.LabelStacks])); err != nil {
 		return nil, err
 	}
 

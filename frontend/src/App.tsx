@@ -46,6 +46,7 @@ export function App() {
         branch: string,
         depth: number | undefined,
         containerUser: string,
+        stacks: string[],
     ) => {
         await createProject({
             name,
@@ -59,6 +60,7 @@ export function App() {
             : undefined,
             image: image || undefined,
             container_user: containerUser || undefined,
+            stacks: stacks.length > 0 ? stacks : undefined,
         });
         await refresh();
     };
@@ -138,8 +140,8 @@ export function App() {
                     title="New Project"
                 >
                     <CreateProjectForm
-                        onSubmit={async (name, gitRepo, image, branch, depth, containerUser) => {
-                            await handleCreate(name, gitRepo, image, branch, depth, containerUser);
+                        onSubmit={async (name, gitRepo, image, branch, depth, containerUser, stacks) => {
+                            await handleCreate(name, gitRepo, image, branch, depth, containerUser, stacks);
                             setModalOpen(false);
                         }}
                         onCancel={() => setModalOpen(false)}
