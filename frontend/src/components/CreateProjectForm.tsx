@@ -216,7 +216,8 @@ export function CreateProjectForm({ onSubmit, onCancel }: Props) {
                                     selectedStacks.includes(stack.id)
                                         ? "border-oc-accent bg-oc-accent"
                                         : "border-oc-border"
-                                }`}>
+                                }`}
+                                >
                                     {selectedStacks.includes(stack.id) && (
                                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                                             <polyline points="20 6 9 17 4 12" />
