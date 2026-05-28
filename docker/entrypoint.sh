@@ -102,7 +102,7 @@ if [ -x /usr/sbin/sshd ]; then
 fi
 
 # Software Stack Installation
-/home/ubuntu/.opencodepod/softwares/install.sh
+sudo bash /home/ubuntu/.opencodepod/softwares/install.sh
 
 cd "$WORKSPACE"
 

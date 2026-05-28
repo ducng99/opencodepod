@@ -18,19 +18,17 @@ install() {
     RUBY_VERSION=$(fetch_latest_ruby_version)
     echo "Downloading Ruby ${RUBY_VERSION}..."
     curl -fsSL "https://cache.ruby-lang.org/pub/ruby/${RUBY_VERSION%.*}/ruby-${RUBY_VERSION}.tar.gz" -o /tmp/ruby.tar.gz
-    sudo mkdir -p /opt/ruby-build
-    sudo tar -xzf /tmp/ruby.tar.gz -C /opt/ruby-build
+    mkdir -p /opt/ruby-build
+    tar -xzf /tmp/ruby.tar.gz -C /opt/ruby-build
 
     cd /opt/ruby-build/ruby-${RUBY_VERSION}
     ./configure --prefix=/opt/ruby --disable-install-doc
     make -j$(nproc)
-    sudo make install
+    make install
     cd /
-    sudo rm -rf /opt/ruby-build
+    rm -rf /opt/ruby-build
     rm /tmp/ruby.tar.gz
 
     /opt/ruby/bin/gem install bundler
     echo "Ruby stack installed."
-
-    export PATH="/opt/ruby/bin:$PATH"
 }

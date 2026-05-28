@@ -30,7 +30,7 @@ for stack in $DESIRED; do
     install
 done
 
-# Build PATH
+# Build and persist PATH for future shells
 path_entries=""
 [ -d /opt/uv ] && path_entries="/opt/uv:$path_entries"
 [ -d /opt/node/bin ] && path_entries="/opt/node/bin:$path_entries"
@@ -42,7 +42,17 @@ path_entries=""
 [ -d /opt/php/bin ] && path_entries="/opt/php/bin:$path_entries"
 
 if [ -n "$path_entries" ]; then
-    export PATH="${path_entries}${PATH}"
-    echo "export PATH=\"${path_entries}\$PATH\"" | sudo tee /etc/profile.d/opencode-stacks.sh > /dev/null
-    sudo chmod +x /etc/profile.d/opencode-stacks.sh
+    echo "export PATH=\"${path_entries}\$PATH\"" | tee /etc/profile.d/opencode-stacks.sh > /dev/null
+    chmod +x /etc/profile.d/opencode-stacks.sh
+
+    # zsh doesn't source /etc/profile.d/, so write to .zshrc too
+    ZSHRC="/home/ubuntu/.zshrc"
+    if [ -f "$ZSHRC" ] && ! grep -qF 'opencode-stacks' "$ZSHRC" 2>/dev/null; then
+        echo "" >> "$ZSHRC"
+        echo "# Software stack paths" >> "$ZSHRC"
+        echo "export PATH=\"${path_entries}\$PATH\"" >> "$ZSHRC"
+    fi
+
+    # Export for current shell (entrypoint bash subshell)
+    . /etc/profile.d/opencode-stacks.sh
 fi

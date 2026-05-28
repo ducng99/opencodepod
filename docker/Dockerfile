@@ -47,12 +47,12 @@ RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
     && chmod 0440 /etc/sudoers.d/ubuntu
 
 # Ensure workspace and .ssh dir exist and are owned by ubuntu
-RUN mkdir -p /workspaces \
-    && chown -R ubuntu:ubuntu /workspaces
+RUN mkdir -p /workspaces /opt \
+    && chown -R ubuntu:ubuntu /workspaces /opt
 
 # Install opencode as user 'ubuntu'
 USER ubuntu
-ENV PATH="/home/ubuntu/.bun/bin:/home/ubuntu/.opencode/bin:/home/ubuntu/bin:${PATH}"
+ENV PATH="/home/ubuntu/.opencode/bin:/home/ubuntu/bin:${PATH}"
 
 # Install Oh My Zsh and plugins
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
@@ -77,7 +77,8 @@ RUN mkdir -p ~/.ssh \
 RUN gpg --list-keys >/dev/null 2>&1 || true
 
 # Create .gitignore in home directory
-RUN echo '**/.opencode/plans/' > ~/.gitignore
+RUN echo '**/.opencode/plans/' > ~/.gitignore \
+    && git config --global core.excludesFile '~/.gitignore'
 
 COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/.opencodepod/entrypoint.sh
 COPY --chown=ubuntu:ubuntu softwares/ /home/ubuntu/.opencodepod/softwares/

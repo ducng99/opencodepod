@@ -18,12 +18,10 @@ install() {
     PHP_VERSION=$(fetch_latest_php_version)
     echo "Downloading PHP ${PHP_VERSION}..."
     curl -fsSL "https://github.com/shivammathur/php-builder/releases/latest/download/php-${PHP_VERSION}-linux-x86_64.tar.xz" -o /tmp/php.tar.xz
-    sudo mkdir -p /opt/php
-    sudo tar -xJf /tmp/php.tar.xz -C /opt/php --strip-components=1
+    mkdir -p /opt/php
+    tar -xJf /tmp/php.tar.xz -C /opt/php --strip-components=1
     rm /tmp/php.tar.xz
 
-    curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/opt/php/bin --filename=composer
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/opt/php/bin --filename=composer
     echo "PHP stack installed."
-
-    export PATH="/opt/php/bin:$PATH"
 }
