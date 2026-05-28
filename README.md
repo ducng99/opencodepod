@@ -117,6 +117,20 @@ services:
       - ./config.json:/app/config.json:ro
 ```
 
+### Docker Deployment
+
+```bash
+docker build -t opencodepod .
+docker run -d \
+  -p 10000:8080 \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  --name opencodepod \
+  opencodepod
+```
+
+> **Note:** Mount the Docker socket read-only. OpenCodePod needs to create and manage containers on your behalf.
+
 ### Cloning private repositories
 
 **SSH key authentication**
@@ -170,28 +184,12 @@ gpg --armor --export-secret-keys "YOUR_KEY_ID" > gpg.key
 
 The UI polls the API every 5 seconds to keep the status grid fresh.
 
-## Docker Deployment
-
-You can also run OpenCodePod itself inside Docker:
-
-```bash
-docker build -t opencodepod .
-docker run -d \
-  -p 8080:8080 \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -v $(pwd)/config.json:/app/config.json:ro \
-  --name opencodepod \
-  opencodepod
-```
-
-> **Note:** Mount the Docker socket read-only. OpenCodePod needs to create and manage containers on your behalf.
-
 ## How It Works
 
 - **No database** — Project state is stored entirely in Docker labels (`opencodepod.managed=true`, `opencodepod.project.id`, etc.).
-- **Naming** — Containers are named `cp-<id>`, volumes `cp-vol-<id>`.
+- **Naming** — Containers are named `cp-<id>`, volumes `cp-vol-<id>-*`.
 - **Port assignment** — Docker randomly assigns host ports for `22/tcp` and `8080/tcp`. CodePod inspects the container after start to discover them.
-- **Volumes** — Each project gets a dedicated Docker volume mounted at `/workspaces` inside the container.
+- **Volumes** — Each project gets dedicated Docker volumes mounted at /workspaces, /opt and /home/<user>/.local/share/opencode.
 - **Restart policy** — Unless stopped via the API, containers use Docker's `unless-stopped` restart policy.
 
 ## Development
