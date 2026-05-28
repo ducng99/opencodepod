@@ -60,8 +60,6 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
     && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting \
     && sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
 RUN curl -fsSL https://opencode.ai/install | bash
 COPY --chown=ubuntu:ubuntu opencode.jsonc /home/ubuntu/.config/opencode/opencode.jsonc
 
@@ -81,7 +79,8 @@ RUN gpg --list-keys >/dev/null 2>&1 || true
 # Create .gitignore in home directory
 RUN echo '**/.opencode/plans/' > ~/.gitignore
 
-COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/entrypoint.sh
+COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/.opencodepod/entrypoint.sh
+COPY --chown=ubuntu:ubuntu softwares/ /home/ubuntu/.opencodepod/softwares/
 
 WORKDIR /workspaces
 EXPOSE 8080
@@ -89,5 +88,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/global/health || exit 1
 
-ENTRYPOINT ["bash", "/home/ubuntu/entrypoint.sh"]
+ENTRYPOINT ["bash", "/home/ubuntu/.opencodepod/entrypoint.sh"]
 CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "8080", "--cors", "*"]
