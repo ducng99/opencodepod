@@ -27,7 +27,7 @@ install() {
     PYTHON_FULL_VERSION=$(fetch_latest_python_version)
     PYTHON_MINOR="${PYTHON_FULL_VERSION%.*}"
     echo "Installing Python ${PYTHON_MINOR} via uv..."
-    "$UV_BIN" python install "${PYTHON_MINOR}" --python-dir /opt/python
+    "$UV_BIN" python install "${PYTHON_MINOR}" --install-dir /opt/python
 
     mkdir -p /opt/python/bin
     ln -sf "/opt/python/bin/python${PYTHON_MINOR}" /opt/python/bin/python3
