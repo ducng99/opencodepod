@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 set -e
 
 eval "$(ssh-agent -s)"
@@ -102,7 +102,8 @@ if [ -x /usr/sbin/sshd ]; then
 fi
 
 # Software Stack Installation
-sudo bash /home/ubuntu/.opencodepod/softwares/install.sh
+/home/ubuntu/.opencodepod/softwares/install.sh
+. /home/ubuntu/.opencodepod/env || echo "Warning: failed to source .opencodepod/env"
 
 cd "$WORKSPACE"
 

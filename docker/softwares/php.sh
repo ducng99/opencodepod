@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/php/bin ]
@@ -23,5 +23,13 @@ install() {
     rm /tmp/php.tar.xz
 
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/opt/php/bin --filename=composer
+
     echo "PHP stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/php/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/php/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

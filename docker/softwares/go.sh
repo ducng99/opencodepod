@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/go/bin ]
@@ -20,5 +20,13 @@ install() {
 
     ln -sf /opt/go-tools/bin/gopls /opt/go/bin/gopls
     ln -sf /opt/go-tools/bin/gofumpt /opt/go/bin/gofumpt
+
     echo "Go stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/go/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/go/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

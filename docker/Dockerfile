@@ -82,6 +82,10 @@ RUN echo '**/.opencode/plans/' > ~/.gitignore \
 
 COPY --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu/.opencodepod/entrypoint.sh
 COPY --chown=ubuntu:ubuntu softwares/ /home/ubuntu/.opencodepod/softwares/
+RUN chmod u+x /home/ubuntu/.opencodepod/*.sh /home/ubuntu/.opencodepod/softwares/*.sh
+
+# Source .opencodepod/env from .zshrc so PATH exports from software installs are loaded
+RUN echo '[ -f /home/ubuntu/.opencodepod/env ] && . /home/ubuntu/.opencodepod/env' >> /home/ubuntu/.zshrc
 
 WORKDIR /workspaces
 EXPOSE 8080
@@ -89,5 +93,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/global/health || exit 1
 
-ENTRYPOINT ["bash", "/home/ubuntu/.opencodepod/entrypoint.sh"]
+ENTRYPOINT ["/home/ubuntu/.opencodepod/entrypoint.sh"]
 CMD ["opencode", "web", "--hostname", "0.0.0.0", "--port", "8080", "--cors", "*"]

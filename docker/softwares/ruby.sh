@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/ruby/bin ]
@@ -30,5 +30,13 @@ install() {
     rm /tmp/ruby.tar.gz
 
     /opt/ruby/bin/gem install bundler
+
     echo "Ruby stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/ruby/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/ruby/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

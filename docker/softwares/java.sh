@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/java/bin ]
@@ -62,5 +62,13 @@ install() {
 
     ln -sf /opt/maven/bin/mvn /opt/java/bin/mvn
     ln -sf /opt/gradle/bin/gradle /opt/java/bin/gradle
+
     echo "Java stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/java/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/java/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

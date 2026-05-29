@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/.cargo/bin ]
@@ -20,5 +20,13 @@ install() {
     rustup component add rust-analyzer
 
     rm -rf "$HOME/.cargo" "$HOME/.rustup"
+
     echo "Rust stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/.cargo/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/.cargo/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/python/bin ]
@@ -35,5 +35,16 @@ install() {
 
     /opt/python/bin/python3 -m ensurepip --upgrade || true
     ln -sf /opt/python/bin/pip3 /opt/python/bin/pip 2>/dev/null || true
+
     echo "Python stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/uv' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/uv:$PATH"' >> "$ENV_FILE"
+    fi
+    if ! grep -qF '/opt/python/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/python/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }

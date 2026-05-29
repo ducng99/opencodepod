@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 
 is_installed() {
     [ -d /opt/node/bin ]
@@ -25,5 +25,13 @@ install() {
     echo "Installing Bun..."
     curl -fsSL https://bun.sh/install | BUN_INSTALL=/opt/bun bash
     ln -sf /opt/bun/bin/bun /opt/node/bin/bun
+
     echo "JavaScript stack installed."
+}
+
+setup_env() {
+    ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF '/opt/node/bin' "$ENV_FILE" 2>/dev/null; then
+        echo 'export PATH="/opt/node/bin:$PATH"' >> "$ENV_FILE"
+    fi
 }
