@@ -68,7 +68,10 @@ install() {
 
 setup_env() {
     ENV_FILE="/home/ubuntu/.opencodepod/env"
+    if ! grep -qF 'JAVA_HOME' "$ENV_FILE" 2>/dev/null; then
+        echo 'export JAVA_HOME="/opt/java"' >> "$ENV_FILE"
+    fi
     if ! grep -qF '/opt/java/bin' "$ENV_FILE" 2>/dev/null; then
-        echo 'export PATH="/opt/java/bin:$PATH"' >> "$ENV_FILE"
+        echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> "$ENV_FILE"
     fi
 }
