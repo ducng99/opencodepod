@@ -11,9 +11,8 @@ fi
 
 sudo chown ubuntu:ubuntu "$STACKS_FILE"
 
-DESIRED=$(jq -r '.stacks[]' "$STACKS_FILE" 2>/dev/null || echo "")
-
-for stack in $DESIRED; do
+while IFS= read -r stack; do
+    [ -z "$stack" ] && continue
     SCRIPT="$SOFT_DIR/$stack.sh"
     if [ ! -f "$SCRIPT" ]; then
         echo "Unknown stack: $stack (no $SCRIPT found)"
@@ -33,4 +32,4 @@ for stack in $DESIRED; do
 
     echo "Installing stack: $stack"
     install
-done
+done < <(jq -r '.stacks[]' "$STACKS_FILE" 2>/dev/null)
