@@ -8,7 +8,28 @@ WORKSPACE="/workspaces"
 # Ensure dirs are owned by ubuntu
 sudo chown ubuntu:ubuntu /home/ubuntu/.local /home/ubuntu/.local/share /home/ubuntu/.local/share/opencode /home/ubuntu/.config /home/ubuntu/.config/opencode || echo "Warning: failed to set ownership on config directories"
 
-opencode upgrade || true
+# Upgrade opencode only if last upgrade was more than 24 hours ago
+UPGRADE_TIMESTAMP_FILE="/home/ubuntu/.opencodepod/.last_upgrade_timestamp"
+mkdir -p /home/ubuntu/.opencodepod
+
+if [ -f "$UPGRADE_TIMESTAMP_FILE" ]; then
+  LAST_UPGRADE=$(cat "$UPGRADE_TIMESTAMP_FILE")
+  CURRENT_TIME=$(date +%s)
+  TIME_DIFF=$((CURRENT_TIME - LAST_UPGRADE))
+  HOURS=$((TIME_DIFF / 3600))
+
+  if [ "$HOURS" -lt 24 ]; then
+    echo "Skipping upgrade - last upgrade was ${HOURS}h ago (less than 24h)"
+  else
+    echo "Upgrading opencode - last upgrade was ${HOURS}h ago"
+    opencode upgrade || true
+    date +%s > "$UPGRADE_TIMESTAMP_FILE"
+  fi
+else
+  echo "First run - upgrading opencode"
+  opencode upgrade || true
+  date +%s > "$UPGRADE_TIMESTAMP_FILE"
+fi
 
 # Configure GPG signing if key is provided
 if [ -f /home/ubuntu/.gnupg/private.key ]; then
